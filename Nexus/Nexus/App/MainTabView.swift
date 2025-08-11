@@ -226,28 +226,6 @@ private struct FeedCard: View {
     }
 }
 
-// MARK: - Shimmer Effect
-
-private struct ShimmerView: View {
-    @State private var isAnimating = false
-    
-    var body: some View {
-        LinearGradient(
-            colors: [Color.clear, Color.white.opacity(0.3), Color.clear],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .scaleEffect(x: isAnimating ? 1 : 0, anchor: .leading)
-        .animation(
-            Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: false),
-            value: isAnimating
-        )
-        .onAppear {
-            isAnimating = true
-        }
-    }
-}
-
 private extension View {
     func shimmer() -> some View { 
         self.overlay(
