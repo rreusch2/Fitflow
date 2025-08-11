@@ -81,12 +81,12 @@ struct UserPreferences: Codable {
 
 // MARK: - Fitness Preferences
 struct FitnessPreferences: Codable {
-    let level: FitnessLevel
-    let preferredActivities: [ActivityType]
-    let availableEquipment: [Equipment]
-    let workoutDuration: WorkoutDuration
-    let workoutFrequency: WorkoutFrequency
-    let limitations: [String]
+    var level: FitnessLevel
+    var preferredActivities: [ActivityType]
+    var availableEquipment: [Equipment]
+    var workoutDuration: WorkoutDuration
+    var workoutFrequency: WorkoutFrequency
+    var limitations: [String]
     
     enum CodingKeys: String, CodingKey {
         case level, limitations

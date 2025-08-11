@@ -665,8 +665,7 @@ class AIResponseCache {
         return queue.sync {
             guard let item = cache[key],
                   item.expirationDate > Date(),
-                  let data = item.data,
-                  let object = try? JSONDecoder().decode(T.self, from: data) else {
+                  let object = try? JSONDecoder().decode(T.self, from: item.data) else {
                 return nil
             }
             return object

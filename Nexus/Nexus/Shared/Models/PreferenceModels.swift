@@ -9,13 +9,13 @@ import Foundation
 
 // MARK: - Nutrition Preferences
 struct NutritionPreferences: Codable {
-    let dietaryRestrictions: [DietaryRestriction]
-    let calorieGoal: CalorieGoal
-    let mealPreferences: [MealPreference]
-    let allergies: [String]
-    let dislikedFoods: [String]
-    let cookingSkill: CookingSkill
-    let mealPrepTime: MealPrepTime
+    var dietaryRestrictions: [DietaryRestriction]
+    var calorieGoal: CalorieGoal
+    var mealPreferences: [MealPreference]
+    var allergies: [String]
+    var dislikedFoods: [String]
+    var cookingSkill: CookingSkill
+    var mealPrepTime: MealPrepTime
     
     enum CodingKeys: String, CodingKey {
         case allergies, dislikedFoods
@@ -159,10 +159,10 @@ enum MealPrepTime: String, Codable, CaseIterable {
 
 // MARK: - Motivation Preferences
 struct MotivationPreferences: Codable {
-    let communicationStyle: CommunicationStyle
-    let reminderFrequency: ReminderFrequency
-    let motivationTriggers: [MotivationTrigger]
-    let preferredTimes: [PreferredTime]
+    var communicationStyle: CommunicationStyle
+    var reminderFrequency: ReminderFrequency
+    var motivationTriggers: [MotivationTrigger]
+    var preferredTimes: [PreferredTime]
     
     enum CodingKeys: String, CodingKey {
         case communicationStyle = "communication_style"

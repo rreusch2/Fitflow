@@ -62,7 +62,7 @@ struct OnboardingContainerView: View {
             }
             .navigationTitle("Get Started")
         }
-        .onChange(of: motivationPrefs.communicationStyle) { _ in
+        .onChange(of: motivationPrefs.communicationStyle) { _, _ in
             themeProvider.applyTheme(for: authService.currentUser)
         }
     }
