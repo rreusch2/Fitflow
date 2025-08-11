@@ -1,6 +1,6 @@
 //
 //  DatabaseService.swift
-//  Fitflow
+//  NexusGPT
 //
 //  Created on 2025-01-13
 //
@@ -20,7 +20,7 @@ class DatabaseService: ObservableObject {
     // For now, we'll create a mock implementation that can be easily replaced
     private var supabaseClient: SupabaseClient?
     
-    private init() {
+    init() {
         initialize()
     }
     

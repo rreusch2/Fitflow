@@ -10,7 +10,7 @@ import SwiftUI
 @main
 struct NexusApp: App {
     @StateObject private var authService = AuthenticationService()
-    @StateObject private var databaseService = DatabaseService()
+    @StateObject private var databaseService = DatabaseService.shared
     
     var body: some Scene {
         WindowGroup {

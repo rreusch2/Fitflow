@@ -82,5 +82,5 @@ struct SplashView: View {
 #Preview {
     ContentView()
         .environmentObject(AuthenticationService())
-        .environmentObject(DatabaseService())
+        .environmentObject(DatabaseService.shared)
 }
