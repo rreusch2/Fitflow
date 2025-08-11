@@ -7,45 +7,88 @@
 
 import SwiftUI
 
-// MARK: - Colors
+// MARK: - Revolutionary Color System
 extension Color {
-    // Primary Colors
-    static let primaryGreen = Color(red: 0/255, green: 212/255, blue: 170/255) // #00D4AA
-    static let primaryGreenDark = Color(red: 0/255, green: 180/255, blue: 144/255)
-    static let primaryGreenLight = Color(red: 51/255, green: 224/255, blue: 191/255)
+    // === VIBRANT PRIMARY PALETTE ===
+    // Energetic Coral - Main brand color
+    static let primaryCoral = Color(red: 255/255, green: 107/255, blue: 107/255) // #FF6B6B
+    static let primaryCoralDark = Color(red: 238/255, green: 82/255, blue: 83/255) // #EE5253
+    static let primaryCoralLight = Color(red: 255/255, green: 154/255, blue: 158/255) // #FF9A9E
     
-    // Secondary Colors
-    static let deepBlue = Color(red: 30/255, green: 58/255, blue: 138/255) // #1E3A8A
-    static let deepBlueDark = Color(red: 23/255, green: 44/255, blue: 104/255)
-    static let deepBlueLight = Color(red: 59/255, green: 130/255, blue: 246/255)
+    // Warm Gold - Success & Achievement
+    static let warmGold = Color(red: 255/255, green: 183/255, blue: 77/255) // #FFB74D
+    static let warmGoldDark = Color(red: 255/255, green: 152/255, blue: 0/255) // #FF9800
+    static let warmGoldLight = Color(red: 255/255, green: 204/255, blue: 128/255) // #FFCC80
     
-    // Accent Colors
-    static let motivationalOrange = Color(red: 245/255, green: 158/255, blue: 11/255) // #F59E0B
-    static let motivationalOrangeLight = Color(red: 251/255, green: 191/255, blue: 36/255)
+    // Deep Ocean - Professional & Trust
+    static let deepOcean = Color(red: 72/255, green: 126/255, blue: 176/255) // #487EB0
+    static let deepOceanDark = Color(red: 47/255, green: 54/255, blue: 64/255) // #2F3640
+    static let deepOceanLight = Color(red: 116/255, green: 185/255, blue: 255/255) // #74B9FF
     
-    // Status Colors
-    static let successGreen = Color(red: 34/255, green: 197/255, blue: 94/255)
-    static let warningYellow = Color(red: 234/255, green: 179/255, blue: 8/255)
-    static let errorRed = Color(red: 239/255, green: 68/255, blue: 68/255)
-    static let infoBlue = Color(red: 59/255, green: 130/255, blue: 246/255)
+    // === DYNAMIC THEME COLORS ===
+    // Fitness & Energy
+    static let fitnessGreen = Color(red: 85/255, green: 239/255, blue: 196/255) // #55EFC4
+    static let fitnessOrange = Color(red: 253/255, green: 121/255, blue: 168/255) // #FD79A8
     
-    // Neutral Colors
-    static let textPrimary = Color(red: 17/255, green: 24/255, blue: 39/255) // #111827
-    static let textSecondary = Color(red: 75/255, green: 85/255, blue: 99/255) // #4B5563
-    static let textTertiary = Color(red: 156/255, green: 163/255, blue: 175/255) // #9CA3AF
+    // Business & Productivity  
+    static let businessBlue = Color(red: 116/255, green: 185/255, blue: 255/255) // #74B9FF
+    static let businessPurple = Color(red: 162/255, green: 155/255, blue: 254/255) // #A29BFE
     
-    static let backgroundPrimary = Color(red: 249/255, green: 250/255, blue: 251/255) // #F9FAFB
+    // Mindset & Wellness
+    static let mindsetLavender = Color(red: 253/255, green: 203/255, blue: 110/255) // #FDCB6E
+    static let mindsetRose = Color(red: 255/255, green: 118/255, blue: 117/255) // #FF7675
+    
+    // Creative & Hobbies
+    static let creativePink = Color(red: 255/255, green: 107/255, blue: 129/255) // #FF6B81
+    static let creativeViolet = Color(red: 196/255, green: 69/255, blue: 105/255) // #C44569
+    
+    // === STATUS & FEEDBACK COLORS ===
+    static let successGreen = Color(red: 85/255, green: 239/255, blue: 196/255) // #55EFC4
+    static let warningGold = Color(red: 255/255, green: 183/255, blue: 77/255) // #FFB74D
+    static let errorCoral = Color(red: 255/255, green: 107/255, blue: 107/255) // #FF6B6B
+    static let infoOcean = Color(red: 116/255, green: 185/255, blue: 255/255) // #74B9FF
+    
+    // === WARM NEUTRAL PALETTE ===
+    static let textPrimary = Color(red: 47/255, green: 54/255, blue: 64/255) // #2F3640 - Warm dark
+    static let textSecondary = Color(red: 87/255, green: 96/255, blue: 111/255) // #57606F - Softer
+    static let textTertiary = Color(red: 149/255, green: 165/255, blue: 166/255) // #95A5A6 - Warm gray
+    
+    static let backgroundPrimary = Color(red: 253/255, green: 251/255, blue: 247/255) // #FDFBF7 - Warm white
     static let backgroundSecondary = Color.white
-    static let backgroundTertiary = Color(red: 243/255, green: 244/255, blue: 246/255) // #F3F4F6
+    static let backgroundTertiary = Color(red: 247/255, green: 241/255, blue: 227/255) // #F7F1E3 - Cream
     
-    static let borderLight = Color(red: 229/255, green: 231/255, blue: 235/255) // #E5E7EB
-    static let borderMedium = Color(red: 209/255, green: 213/255, blue: 219/255) // #D1D5DB
+    static let borderLight = Color(red: 238/255, green: 238/255, blue: 238/255) // #EEEEEE
+    static let borderMedium = Color(red: 220/255, green: 221/255, blue: 225/255) // #DCDDE1
     
-    // Dark Mode Colors
-    static let darkBackgroundPrimary = Color(red: 17/255, green: 24/255, blue: 39/255)
-    static let darkBackgroundSecondary = Color(red: 31/255, green: 41/255, blue: 55/255)
-    static let darkTextPrimary = Color.white
-    static let darkTextSecondary = Color(red: 209/255, green: 213/255, blue: 219/255)
+    // === WARM DARK MODE ===
+    static let darkBackgroundPrimary = Color(red: 47/255, green: 54/255, blue: 64/255) // #2F3640
+    static let darkBackgroundSecondary = Color(red: 87/255, green: 96/255, blue: 111/255) // #57606F
+    static let darkTextPrimary = Color(red: 253/255, green: 251/255, blue: 247/255) // #FDFBF7
+    static let darkTextSecondary = Color(red: 220/255, green: 221/255, blue: 225/255) // #DCDDE1
+    
+    // === LEGACY SUPPORT (for existing components) ===
+    static let primaryGreen = primaryCoral // Map old to new
+    static let deepBlue = deepOcean
+    static let motivationalOrange = warmGold
+    
+    // === GRADIENT COMBINATIONS ===
+    static let energeticGradient = LinearGradient(
+        colors: [primaryCoral, warmGold],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let professionalGradient = LinearGradient(
+        colors: [deepOcean, businessBlue],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let warmGradient = LinearGradient(
+        colors: [mindsetLavender, mindsetRose],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 // MARK: - Typography

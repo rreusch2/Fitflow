@@ -8,18 +8,21 @@
 import SwiftUI
 
 enum ThemeStyle: String, CaseIterable, Codable {
-    case energetic
-    case calm
-    case minimal
-    case playful
+    case energetic      // High energy, motivational
+    case professional   // Business, productivity focused
+    case mindful        // Wellness, meditation, calm
+    case creative       // Artistic, hobbies, self-expression
+    case balanced       // Mixed interests, harmonious
 }
 
 enum AccentColorChoice: String, CaseIterable, Codable {
-    case green
-    case blue
-    case orange
-    case pink
-    case purple
+    case coral          // Primary brand
+    case gold           // Achievement, success
+    case ocean          // Trust, professional
+    case fitness        // Health, energy
+    case business       // Productivity, growth
+    case mindset        // Wellness, balance
+    case creative       // Art, hobbies
 }
 
 struct Theme {
@@ -38,37 +41,51 @@ final class ThemeProvider: ObservableObject {
     @Published private(set) var accentChoice: AccentColorChoice
     
     init() {
-        self.style = .energetic
-        self.accentChoice = .green
-        self.theme = ThemeProvider.buildTheme(style: .energetic, accent: .green)
+        self.style = .balanced
+        self.accentChoice = .coral
+        self.theme = ThemeProvider.buildTheme(style: .balanced, accent: .coral)
     }
     
     func applyTheme(for user: User?) {
         guard let prefs = user?.preferences else {
-            setTheme(style: .energetic, accent: .green)
+            setTheme(style: .balanced, accent: .coral)
             return
         }
-        // Map communication style → UI vibe. Avoid gendered assumptions; rely on vibe.
+        
+        // Map communication style to theme style
         let mappedStyle: ThemeStyle
         switch prefs.motivation.communicationStyle {
         case .energetic: mappedStyle = .energetic
-        case .calm: mappedStyle = .calm
-        case .supportive: mappedStyle = .minimal
-        case .humorous: mappedStyle = .playful
-        case .tough: mappedStyle = .minimal
-        case .scientific: mappedStyle = .minimal
+        case .calm: mappedStyle = .mindful
+        case .supportive: mappedStyle = .balanced
+        case .humorous: mappedStyle = .creative
+        case .tough: mappedStyle = .professional
+        case .scientific: mappedStyle = .professional
         }
-        // Pick an accent informed by top activity preference if any
-        let topActivity = prefs.fitness.preferredActivities.first
+        
+        // Determine primary interest area for accent color
+        let hasBusinessGoals = !prefs.goals.isEmpty && prefs.goals.contains { $0.type == .career }
+        let hasFitnessInterest = !prefs.fitness.preferredActivities.isEmpty
+        let hasCreativeInterest = prefs.fitness.preferredActivities.contains(.dancing)
+        
         let accent: AccentColorChoice
-        switch topActivity {
-        case .some(.strength): accent = .orange
-        case .some(.cardio): accent = .green
-        case .some(.yoga), .some(.pilates), .some(.swimming): accent = .blue
-        case .some(.running), .some(.cycling): accent = .purple
-        case .some(.dancing), .some(.sports): accent = .pink
-        default: accent = .green
+        if hasBusinessGoals {
+            accent = .business
+        } else if hasFitnessInterest {
+            accent = .fitness
+        } else if hasCreativeInterest {
+            accent = .creative
+        } else {
+            // Default based on communication style
+            switch prefs.motivation.communicationStyle {
+            case .energetic: accent = .coral
+            case .calm: accent = .mindset
+            case .scientific, .tough: accent = .business
+            case .humorous: accent = .creative
+            case .supportive: accent = .gold
+            }
         }
+        
         setTheme(style: mappedStyle, accent: accent)
     }
     
@@ -81,11 +98,13 @@ final class ThemeProvider: ObservableObject {
     private static func buildTheme(style: ThemeStyle, accent: AccentColorChoice) -> Theme {
         let accentColor: Color
         switch accent {
-        case .green: accentColor = .primaryGreen
-        case .blue: accentColor = .deepBlueLight
-        case .orange: accentColor = .motivationalOrange
-        case .pink: accentColor = Color(red: 236/255, green: 72/255, blue: 153/255)
-        case .purple: accentColor = Color(red: 139/255, green: 92/255, blue: 246/255)
+        case .coral: accentColor = .primaryCoral
+        case .gold: accentColor = .warmGold
+        case .ocean: accentColor = .deepOcean
+        case .fitness: accentColor = .fitnessGreen
+        case .business: accentColor = .businessBlue
+        case .mindset: accentColor = .mindsetLavender
+        case .creative: accentColor = .creativePink
         }
         
         switch style {
@@ -96,7 +115,43 @@ final class ThemeProvider: ObservableObject {
                 textPrimary: .textPrimary,
                 textSecondary: .textSecondary,
                 accent: accentColor,
-                emphasis: .deepBlue
+                emphasis: .primaryCoral
+            )
+        case .professional:
+            return Theme(
+                backgroundPrimary: .backgroundPrimary,
+                backgroundSecondary: .backgroundSecondary,
+                textPrimary: .textPrimary,
+                textSecondary: .textSecondary,
+                accent: accentColor,
+                emphasis: .deepOcean
+            )
+        case .mindful:
+            return Theme(
+                backgroundPrimary: .backgroundPrimary,
+                backgroundSecondary: .backgroundSecondary,
+                textPrimary: .textPrimary,
+                textSecondary: .textSecondary,
+                accent: accentColor,
+                emphasis: .mindsetRose
+            )
+        case .creative:
+            return Theme(
+                backgroundPrimary: .backgroundPrimary,
+                backgroundSecondary: .backgroundSecondary,
+                textPrimary: .textPrimary,
+                textSecondary: .textSecondary,
+                accent: accentColor,
+                emphasis: .creativePink
+            )
+        case .balanced:
+            return Theme(
+                backgroundPrimary: .backgroundPrimary,
+                backgroundSecondary: .backgroundSecondary,
+                textPrimary: .textPrimary,
+                textSecondary: .textSecondary,
+                accent: accentColor,
+                emphasis: .warmGold
             )
         case .calm:
             return Theme(
@@ -128,5 +183,3 @@ final class ThemeProvider: ObservableObject {
         }
     }
 }
-
-
