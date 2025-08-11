@@ -1,6 +1,6 @@
 //
-//  FitflowApp.swift
-//  Fitflow
+//  NexusGPTApp.swift
+//  NexusGPT
 //
 //  Created on 2025-01-13
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct FitflowApp: App {
+struct NexusGPTApp: App {
     @StateObject private var authService = AuthenticationService()
     @StateObject private var databaseService = DatabaseService()
     

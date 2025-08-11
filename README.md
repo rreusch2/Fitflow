@@ -1,4 +1,4 @@
-# Fitflow - AI-Powered Fitness Assistant
+# NexusGPT - AI-Powered Fitness Assistant
 
 An iOS app built with SwiftUI that provides personalized workout plans, meal recommendations, and motivation through intelligent user profiling and adaptive learning.
 
@@ -13,7 +13,7 @@ An iOS app built with SwiftUI that provides personalized workout plans, meal rec
 ## Project Structure
 
 ```
-FitflowApp/
+NexusGPTApp/
 ├── App/                    # App entry point and main views
 ├── Core/                   # Core services and utilities
 │   ├── Authentication/     # Auth service and views
@@ -42,7 +42,7 @@ FitflowApp/
 
 ## Getting Started
 
-1. Open `FitflowApp.xcodeproj` in Xcode
+1. Open `NexusGPTApp.xcodeproj` in Xcode
 2. Set up Supabase project and add credentials to `Config.swift`
 3. Add AI API keys to environment
 4. Build and run on iOS Simulator or device

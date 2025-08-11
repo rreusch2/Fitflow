@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  Fitflow
+//  NexusGPT
 //
 //  Created on 2025-01-13
 //
@@ -58,7 +58,7 @@ struct SplashView: View {
                     .scaleEffect(scale)
                     .opacity(opacity)
                 
-                Text("Fitflow")
+                Text("NexusGPT")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
