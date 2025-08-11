@@ -100,11 +100,7 @@ private struct FeedView: View {
         guard let user = authService.currentUser else { return }
         isLoading = true
         defer { isLoading = false }
-        do {
-            items = await feedService.getTodayFeed(for: user, desiredCount: 6)
-        } catch {
-            // TODO: Surface error to the user with a toast/snackbar
-        }
+        items = await feedService.getTodayFeed(for: user, desiredCount: 6)
     }
 }
 

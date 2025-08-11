@@ -214,7 +214,7 @@ class AuthenticationService: ObservableObject {
     // MARK: - Update User Profile
     
     func updateUserProfile(_ updatedUser: User) async {
-        guard let currentUser = currentUser else { return }
+        guard currentUser != nil else { return }
         
         isLoading = true
         

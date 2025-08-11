@@ -136,7 +136,6 @@ extension AIService {
     
     func createMealPlanPrompt(preferences: UserPreferences, healthProfile: HealthProfile?) -> String {
         let nutrition = preferences.nutrition
-        let motivation = preferences.motivation
         
         var prompt = """
         Create a personalized daily meal plan with the following specifications:
