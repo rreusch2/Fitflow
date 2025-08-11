@@ -86,6 +86,8 @@ struct Config {
         static let chatCompletion = "/chat-completion"
         static let analyzeProgress = "/analyze-progress"
         static let generateMotivation = "/generate-motivation"
+        // Supabase Edge Functions are exposed at /functions/v1/<name>
+        static let generateImage = "/functions/v1/generate-image"
     }
     
     // MARK: - Cache Configuration

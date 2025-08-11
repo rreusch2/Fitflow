@@ -16,6 +16,9 @@ class AIService: ObservableObject {
     @Published var errorMessage: String?
     @Published var dailyUsageCount = 0
     
+    // Lightweight daily feed cache (image-based motivation)
+    private var dailyFeedCache: [UUID: [FeedItem]] = [:]
+    
     private var cancellables = Set<AnyCancellable>()
     private let cache = AIResponseCache()
     
@@ -206,6 +209,75 @@ class AIService: ObservableObject {
             errorMessage = handleAIError(error)
             throw error
         }
+    }
+    
+    // MARK: - Daily Image Motivation (feed)
+    
+    func generateDailyFeedItems(for user: User, count: Int = 6) async throws -> [FeedItem] {
+        try await checkRateLimit(for: user)
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        
+        // Serve from in-memory cache for this run if available
+        if let cached = dailyFeedCache[user.id], let first = cached.first,
+           calendar.isDate(first.date, inSameDayAs: todayStart), cached.count >= count {
+            return cached
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        // Build short, personal prompts for images and captions
+        let topics = deriveTopTopics(from: user)
+        // Respect tier caps
+        let maxItems: Int
+        switch user.subscriptionTier {
+        case .free: maxItems = min(count, 2)
+        case .pro, .lifetime: maxItems = min(count, 10)
+        }
+
+        var items: [FeedItem] = []
+        for idx in 0..<maxItems {
+            let topic = topics[idx % max(1, topics.count)]
+            let text = try await generateMotivationalMessage(
+                for: user,
+                trigger: .goalReminder,
+                context: ["topic": topic]
+            )
+            // Placeholder image URL; backend will replace with generated images later
+            let placeholder = "https://picsum.photos/seed/\(user.id.uuidString.prefix(8))\(idx)/1024/1024"
+            let item = FeedItem(
+                id: UUID(),
+                userId: user.id,
+                date: todayStart,
+                kind: .image,
+                title: nil,
+                text: text,
+                imageUrl: placeholder,
+                videoUrl: nil,
+                topicTags: [topic],
+                style: user.preferences?.motivation.communicationStyle.rawValue,
+                createdAt: Date()
+            )
+            items.append(item)
+        }
+        
+        dailyFeedCache[user.id] = items
+        incrementUsage()
+        return items
+    }
+    
+    private func deriveTopTopics(from user: User) -> [String] {
+        guard let prefs = user.preferences else { return ["mindset"] }
+        var topics: [String] = []
+        // Seed with requested verticals
+        topics.append("mindset")
+        topics.append("business")
+        topics.append("relationships")
+        // Add activity hints
+        let activities = prefs.fitness.preferredActivities.map { $0.displayName.lowercased() }
+        topics.append(contentsOf: activities.prefix(2))
+        return Array(Set(topics))
     }
     
     // MARK: - Progress Analysis

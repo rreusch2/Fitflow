@@ -62,3 +62,8 @@ After MVP launch, we'll add:
 - Advanced progress tracking
 - Social features
 - Premium subscription model
+
+## Docs
+
+- `PRODUCT_PLAN.md`: Strategy, decisions, and roadmap
+- `TESTING_SETUP_XCODE.md`: How to set up Xcode and TestFlight

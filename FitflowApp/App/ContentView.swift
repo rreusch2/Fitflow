@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var authService: AuthenticationService
+    @StateObject private var themeProvider = ThemeProvider()
     @State private var isLoading = true
     
     var body: some View {
@@ -18,11 +19,15 @@ struct ContentView: View {
             } else if authService.isAuthenticated {
                 if authService.currentUser?.hasCompletedOnboarding == true {
                     MainTabView()
+                        .environmentObject(themeProvider)
+                        .onAppear { themeProvider.applyTheme(for: authService.currentUser) }
                 } else {
                     OnboardingContainerView()
+                        .environmentObject(themeProvider)
                 }
             } else {
                 AuthenticationView()
+                    .environmentObject(themeProvider)
             }
         }
         .onAppear {
