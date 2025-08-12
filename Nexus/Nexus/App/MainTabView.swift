@@ -22,43 +22,43 @@ struct MainTabView: View {
     }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Always show the main feed
-            PersonalizedFeedView()
-                .tabItem {
-                    Label("Flow", systemImage: "brain.head.profile")
-                }
-                .tag(0)
-            
-            // Dynamic tabs based on user interests
-            ForEach(Array(dynamicTabs.enumerated()), id: \.offset) { index, tab in
-                tab.view
+        ZStack {
+            TabView(selection: $selectedTab) {
+                // Always show the main feed
+                PersonalizedFeedView()
                     .tabItem {
-                        Label(tab.title, systemImage: tab.icon)
+                        Label("Flow", systemImage: "brain.head.profile")
                     }
-                    .tag(index + 1)
+                    .tag(0)
+                
+                // Dynamic tabs based on user interests with AI enhancement
+                ForEach(Array(dynamicTabs.enumerated()), id: \.offset) { index, tab in
+                    getEnhancedTabView(for: tab.interest)
+                        .tabItem {
+                            Label(tab.title, systemImage: tab.icon)
+                        }
+                        .tag(index + 1)
+                }
+                
+                // Always show profile (Coach is now floating)
+                ProfileView()
+                    .tabItem {
+                        Label("Profile", systemImage: "person.fill")
+                    }
+                    .tag(dynamicTabs.count + 1)
             }
+            .tint(themeProvider.theme.accent)
+            .background(ThemedBackground().environmentObject(themeProvider))
             
-            // Always show the AI coach
-            FlowmateCoachView()
-                .tabItem {
-                    Label("Coach", systemImage: "message.fill")
-                }
-                .tag(dynamicTabs.count + 1)
-            
-            // Always show profile
-            ProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
-                .tag(dynamicTabs.count + 2)
+            // Revolutionary Floating Coach - accessible from any tab
+            FloatingCoach()
+                .environmentObject(themeProvider)
+                .environmentObject(authService)
         }
-        .tint(themeProvider.theme.accent)
-        .background(ThemedBackground().environmentObject(themeProvider))
     }
     
     // Revolutionary intelligent tab system - respects user's custom tab management preferences
-    private var dynamicTabs: [(title: String, icon: String, view: AnyView)] {
+    private var dynamicTabs: [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
         // Check if user has custom tab management preferences
         if let tabVisibility = authService.currentUser?.preferences?.theme.tabVisibility {
             return getCustomizedTabs(from: tabVisibility)
@@ -68,7 +68,44 @@ struct MainTabView: View {
         }
     }
     
-    private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView)] {
+    // Enhanced tab view router with AI agents
+    @ViewBuilder
+    private func getEnhancedTabView(for interest: UserInterest) -> some View {
+        switch interest {
+        case .fitness:
+            EnhancedFitnessView()
+                .environmentObject(themeProvider)
+                .environmentObject(authService)
+        case .business:
+            EnhancedBusinessView()
+                .environmentObject(themeProvider)
+                .environmentObject(authService)
+        case .wealth:
+            EnhancedWealthView()
+                .environmentObject(themeProvider)
+                .environmentObject(authService)
+        case .mindset:
+            MindsetView() // Keep existing for now, can enhance later
+        case .creativity:
+            CreativityView() // Keep existing for now, can enhance later
+        case .relationships:
+            RelationshipsView() // Keep existing for now, can enhance later
+        case .learning:
+            LearningView()
+        case .spirituality:
+            SpiritualityView()
+        case .adventure:
+            AdventureView()
+        case .leadership:
+            LeadershipView()
+        case .health:
+            HealthView()
+        case .family:
+            FamilyView()
+        }
+    }
+    
+    private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
         // Define all possible tabs
         let allPossibleTabs: [UserInterest: (title: String, icon: String, view: AnyView)] = [
             .fitness: ("Fitness", "figure.run", AnyView(FitnessView())),
@@ -88,11 +125,11 @@ struct MainTabView: View {
         // Return tabs in user's preferred order and selection
         return tabVisibility.visibleTabs.compactMap { interest in
             guard let tab = allPossibleTabs[interest] else { return nil }
-            return (title: tab.title, icon: tab.icon, view: tab.view)
+            return (title: tab.title, icon: tab.icon, view: tab.view, interest: interest)
         }
     }
     
-    private func getDefaultPrioritizedTabs() -> [(title: String, icon: String, view: AnyView)] {
+    private func getDefaultPrioritizedTabs() -> [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
         let maxTabs = 4 // Perfect for navigation without overcrowding
         
         // Define all possible tabs with priority weights
@@ -113,12 +150,12 @@ struct MainTabView: View {
         
         // Filter to user's selected interests, sort by priority weight, and take top maxTabs
         let prioritizedTabs = allPossibleTabs
-            .filter { userInterests.contains($0.interest) }
             .sorted { $0.weight > $1.weight }
             .prefix(maxTabs)
-            .map { (title: $0.title, icon: $0.icon, view: $0.view) }
         
-        return Array(prioritizedTabs)
+        return prioritizedTabs.map { tab in
+            (title: tab.title, icon: tab.icon, view: tab.view, interest: tab.interest)
+        }
     }
     
     // Intelligent priority weighting based on user preferences and common usage patterns
