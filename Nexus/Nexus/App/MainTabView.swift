@@ -552,7 +552,7 @@ private struct EnhancedFeedCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text(item.summary ?? "")
+            Text(item.text)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
