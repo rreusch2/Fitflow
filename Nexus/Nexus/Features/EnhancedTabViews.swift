@@ -386,7 +386,7 @@ struct AIStatusIndicator: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.cardBackground.opacity(0.6))
+                .fill(themeProvider.theme.backgroundSecondary.opacity(0.6))
         )
     }
 }
@@ -428,7 +428,7 @@ struct AIInsightCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
                 .shadow(color: themeProvider.theme.accent.opacity(0.1), radius: 8, x: 0, y: 4)
         )
     }
@@ -464,7 +464,7 @@ struct AIQuickActionsGrid: View {
                     .frame(height: 120)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.cardBackground)
+                            .fill(themeProvider.theme.backgroundSecondary)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(themeProvider.theme.accent.opacity(0.2), lineWidth: 1)
@@ -518,7 +518,7 @@ struct AIGeneratedWorkoutCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
                 .shadow(color: themeProvider.theme.accent.opacity(0.1), radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal, 20)
@@ -555,7 +555,7 @@ struct AIBusinessStrategyCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
                 .shadow(color: themeProvider.theme.accent.opacity(0.1), radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal, 20)
@@ -592,7 +592,7 @@ struct AIPortfolioAnalysisCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
                 .shadow(color: themeProvider.theme.accent.opacity(0.1), radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal, 20)
@@ -657,7 +657,7 @@ struct AIRecommendationCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
         )
         .padding(.horizontal, 20)
     }

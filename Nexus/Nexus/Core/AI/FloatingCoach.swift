@@ -262,7 +262,6 @@ struct FloatingChatInterface: View {
     let onClose: () -> Void
     
     @EnvironmentObject var themeProvider: ThemeProvider
-    @State private var scrollProxy: ScrollViewReader?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -318,11 +317,12 @@ struct FloatingChatInterface: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                .onAppear {
-                    scrollProxy = proxy
-                }
                 .onChange(of: messages.count) { _ in
-                    scrollToBottom()
+                    if let lastMessage = messages.last {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
+                    }
                 }
             }
             
@@ -346,13 +346,7 @@ struct FloatingChatInterface: View {
         .offset(x: -80, y: -20) // Position relative to button
     }
     
-    private func scrollToBottom() {
-        if let lastMessage = messages.last {
-            withAnimation(.easeOut(duration: 0.3)) {
-                scrollProxy?.scrollTo(lastMessage.id, anchor: .bottom)
-            }
-        }
-    }
+
 }
 
 // MARK: - Coach Message Components

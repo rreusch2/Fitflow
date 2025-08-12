@@ -132,7 +132,7 @@ struct AIStatusBar: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.cardBackground.opacity(0.95))
+                .fill(themeProvider.theme.backgroundSecondary.opacity(0.95))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
@@ -164,7 +164,7 @@ struct AIActionPanel: View {
             }
             
             // Quick Actions Grid
-            AIQuickActionsGrid(
+                                    AISimpleActionsGrid(
                 actions: agentManager.getAgent(for: interest).getQuickActions(),
                 onActionTap: onActionTap
             )
@@ -172,7 +172,7 @@ struct AIActionPanel: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(themeProvider.theme.cardBackground)
+                .fill(themeProvider.theme.backgroundSecondary)
                 .shadow(
                     color: Color.black.opacity(0.1),
                     radius: 15,
@@ -258,7 +258,7 @@ struct AIInsightDisplayCard: View {
 
 // MARK: - AI Quick Actions Grid
 
-struct AIQuickActionsGrid: View {
+struct AISimpleActionsGrid: View {
     let actions: [String]
     let onActionTap: (String) -> Void
     
@@ -284,7 +284,7 @@ struct AIQuickActionsGrid: View {
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(themeProvider.theme.cardBackground)
+                            .fill(themeProvider.theme.backgroundSecondary)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
