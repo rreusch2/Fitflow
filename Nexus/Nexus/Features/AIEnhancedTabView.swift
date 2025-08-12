@@ -230,7 +230,7 @@ struct AIInsightDisplayCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.background.opacity(0.8))
+                .fill(themeProvider.theme.backgroundSecondary.opacity(0.8))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(themeProvider.theme.accent.opacity(0.2), lineWidth: 1)
