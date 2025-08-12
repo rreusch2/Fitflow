@@ -69,18 +69,18 @@ class FitnessAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        let contextualPrompt = """
-        \(systemPrompt)
-        
+        let userContent = """
         User's Fitness Profile:
         \(getFitnessContext(for: user))
         
-        User Question: \(query)
-        
-        Provide a helpful, personalized response based on their fitness profile and goals.
+        Question: \(query)
+        Please provide a helpful, personalized response based on their fitness profile and goals.
         """
-        
-        return try await aiService.callGrokAPI(prompt: contextualPrompt, type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: userContent, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .workout)
     }
     
     private func getFitnessContext(for user: User) -> String {
@@ -142,7 +142,11 @@ class BusinessAIAgent: AIAgent {
         4. Motivational business message
         """
         
-        let response = try await aiService.callGrokAPI(prompt: prompt, type: .businessPlan)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: prompt, timestamp: Date())
+        ]
+        let response = try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
         return parseAIResponse(response, for: .business)
     }
     
@@ -155,18 +159,18 @@ class BusinessAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        let contextualPrompt = """
-        \(systemPrompt)
-        
+        let userContent = """
         User's Business Context:
         \(getBusinessContext(for: user))
         
-        User Question: \(query)
-        
+        Question: \(query)
         Provide strategic, actionable business advice tailored to their profile and goals.
         """
-        
-        return try await aiService.callGrokAPI(prompt: contextualPrompt, type: .businessPlan)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: userContent, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
     
     private func getBusinessContext(for user: User) -> String {
@@ -228,7 +232,11 @@ class WealthAIAgent: AIAgent {
         4. Motivational wealth message
         """
         
-        let response = try await aiService.callGrokAPI(prompt: prompt, type: .businessPlan)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: prompt, timestamp: Date())
+        ]
+        let response = try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
         return parseAIResponse(response, for: .wealth)
     }
     
@@ -241,18 +249,18 @@ class WealthAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        let contextualPrompt = """
-        \(systemPrompt)
-        
+        let userContent = """
         User's Financial Context:
         \(getWealthContext(for: user))
         
-        User Question: \(query)
-        
+        Question: \(query)
         Provide personalized financial advice and wealth-building strategies based on their profile.
         """
-        
-        return try await aiService.callGrokAPI(prompt: contextualPrompt, type: .businessPlan)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: userContent, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
     
     private func getWealthContext(for user: User) -> String {
@@ -326,18 +334,18 @@ class MindsetAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        let contextualPrompt = """
-        \(systemPrompt)
-        
+        let userContent = """
         User's Mindset Context:
         \(getMindsetContext(for: user))
         
-        User Question: \(query)
-        
+        Question: \(query)
         Provide personalized mindset coaching and mental wellness strategies based on their profile.
         """
-        
-        return try await aiService.callGrokAPI(prompt: contextualPrompt, type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: userContent, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .motivation)
     }
     
     private func getMindsetContext(for user: User) -> String {
@@ -377,7 +385,11 @@ class CreativityAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " User question: \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: "User question: \(query)", timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -406,7 +418,11 @@ class RelationshipsAIAgent: AIAgent {
     }
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " User question: \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: "User question: \(query)", timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -426,7 +442,11 @@ class LearningAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -444,7 +464,11 @@ class SpiritualityAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -462,7 +486,11 @@ class AdventureAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -480,7 +508,11 @@ class LeadershipAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -498,7 +530,11 @@ class HealthAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -516,7 +552,11 @@ class FamilyAIAgent: AIAgent {
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
     func processUserQuery(_ query: String, for user: User) async throws -> String { 
-        return try await aiService.callGrokAPI(prompt: systemPrompt + " \(query)", type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: query, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .general)
     }
 }
 
@@ -550,18 +590,18 @@ class CoachAIAgent: AIAgent {
     
     func processUserQuery(_ query: String, for user: User) async throws -> String {
         let userContext = getUserContext(for: user)
-        let contextualPrompt = """
-        \(systemPrompt)
-        
+        let userContent = """
         User's Profile:
         \(userContext)
         
-        User Question: \(query)
-        
+        Question: \(query)
         Provide personalized life coaching advice considering their interests and goals.
         """
-        
-        return try await aiService.callGrokAPI(prompt: contextualPrompt, type: .motivation)
+        let messages = [
+            ChatMessage(id: UUID(), role: .system, content: systemPrompt, timestamp: Date()),
+            ChatMessage(id: UUID(), role: .user, content: userContent, timestamp: Date())
+        ]
+        return try await aiService.generateChatResponse(messages: messages, user: user, context: .motivation)
     }
     
     private func getUserContext(for user: User) -> String {

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - Floating Coach Manager
 
@@ -287,7 +288,7 @@ struct FloatingChatInterface: View {
             }
             .padding()
             .background(
-                themeProvider.theme.cardBackground
+                themeProvider.theme.backgroundSecondary
                     .overlay(
                         Rectangle()
                             .fill(themeProvider.theme.accent.opacity(0.1))
@@ -335,7 +336,7 @@ struct FloatingChatInterface: View {
         .frame(width: 320, height: 450)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(themeProvider.theme.background)
+                .fill(themeProvider.theme.backgroundPrimary)
                 .shadow(
                     color: Color.black.opacity(0.2),
                     radius: 20,
@@ -387,7 +388,7 @@ struct CoachMessageBubble: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(themeProvider.theme.cardBackground)
+                            .fill(themeProvider.theme.backgroundSecondary)
                     )
                     .foregroundColor(themeProvider.theme.textPrimary)
                     .font(.system(size: 15))
@@ -451,7 +452,7 @@ struct CoachTypingIndicator: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(themeProvider.theme.cardBackground)
+                    .fill(themeProvider.theme.backgroundSecondary)
             )
             
             Spacer()
@@ -477,7 +478,7 @@ struct CoachMessageInput: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(themeProvider.theme.cardBackground)
+                        .fill(themeProvider.theme.backgroundSecondary)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
                                 .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
@@ -503,7 +504,7 @@ struct CoachMessageInput: View {
             .opacity(currentMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 1.0)
         }
         .padding()
-        .background(themeProvider.theme.background)
+        .background(themeProvider.theme.backgroundPrimary)
     }
     
     private func sendMessage() {
