@@ -1631,17 +1631,6 @@ private struct WealthView: View {
         }
     }
 }
-                    EmptyView()
-                }
-            }
-            Text(item.text)
-                .font(.headline)
-                .foregroundStyle(Color.textPrimary)
-                .padding(.horizontal, 4)
-                .padding(.bottom, 8)
-        }
-    }
-}
 
 private extension View {
     func shimmer() -> some View { 
