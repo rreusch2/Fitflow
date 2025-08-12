@@ -276,6 +276,7 @@ enum CommunicationStyle: String, Codable, CaseIterable {
     case supportive = "supportive"
     case scientific = "scientific"
     case humorous = "humorous"
+    case dark = "dark"
     
     var displayName: String {
         switch self {
@@ -285,6 +286,7 @@ enum CommunicationStyle: String, Codable, CaseIterable {
         case .supportive: return "Supportive & Encouraging"
         case .scientific: return "Data-Driven & Scientific"
         case .humorous: return "Fun & Humorous"
+        case .dark: return "Dark & Sleek"
         }
     }
     
@@ -296,6 +298,7 @@ enum CommunicationStyle: String, Codable, CaseIterable {
         case .supportive: return "Understanding, patient, celebrates small wins"
         case .scientific: return "Facts, data, research-based approach"
         case .humorous: return "Light-hearted, funny, makes fitness fun"
+        case .dark: return "Clean, minimal interface with iOS dark mode aesthetic"
         }
     }
     
@@ -307,6 +310,7 @@ enum CommunicationStyle: String, Codable, CaseIterable {
         case .supportive: return "You're doing amazing! Every step counts, and I'm here to support you. 💙"
         case .scientific: return "Studies show consistency beats intensity. Your 3x/week routine is optimal for progress."
         case .humorous: return "Time to turn your body into a temple... or at least a decent shed! 😄"
+        case .dark: return "Ready to elevate your performance? Your metrics look solid—time to execute."
         }
     }
 }

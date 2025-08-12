@@ -79,7 +79,7 @@ struct SplashView: View {
                 .opacity(opacity)
                 
                 VStack(spacing: 8) {
-                    Text("NexusGPT")
+                    Text("Flowmate")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 2)

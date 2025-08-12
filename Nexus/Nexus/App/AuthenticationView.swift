@@ -21,12 +21,13 @@ struct AuthenticationView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Beautiful flowing gradient background
+                // Stunning ethereal gradient background
                 LinearGradient(
                     colors: [
-                        Color.primaryCoral.opacity(0.8),
-                        Color.warmGold.opacity(0.6),
-                        Color.deepOcean.opacity(0.7)
+                        Color(red: 135/255, green: 206/255, blue: 235/255).opacity(0.4), // Sky blue
+                        Color(red: 255/255, green: 182/255, blue: 193/255).opacity(0.3), // Light pink
+                        Color(red: 221/255, green: 160/255, blue: 221/255).opacity(0.2), // Plum
+                        Color(red: 173/255, green: 216/255, blue: 230/255).opacity(0.3)  // Light blue
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

@@ -58,7 +58,7 @@ struct OnboardingContainerView: View {
     @State private var weeklySocialHours: Int = 5
     
     // Theme preview selection
-    @State private var selectedStyle: ThemeStyle = .balanced
+    @State private var selectedStyle: ThemeStyle = .energetic
     @State private var selectedAccent: AccentColorChoice = .coral
 
     // Dynamic pages model
@@ -73,7 +73,6 @@ struct OnboardingContainerView: View {
         case mindset
         case wealth
         case relationships
-        case motivation
         case summary
     }
     
@@ -86,7 +85,6 @@ struct OnboardingContainerView: View {
         if selectedInterests.contains(.mindset) { pages.append(.mindset) }
         if selectedInterests.contains(.wealth) { pages.append(.wealth) }
         if selectedInterests.contains(.relationships) { pages.append(.relationships) }
-        pages.append(.motivation)
         pages.append(.summary)
         return pages
     }
@@ -237,18 +235,17 @@ struct OnboardingContainerView: View {
             }
         }
         .tabViewStyle(.page)
-        .indexViewStyle(.page(backgroundDisplayMode: .always))
-        .animation(.smooth, value: step)
-        .transition(.scaleAndFade)
+        .indexViewStyle(.page(backgroundDisplayMode: .automatic))
+        .animation(.easeInOut(duration: 0.2), value: step) // Faster, smoother animation
     }
     
     @ViewBuilder
     private func pageContentView(for page: OnboardingPage) -> some View {
         switch page {
         case .welcome:
-            WelcomeSlide()
+            WelcomeSlide(onContinue: nextStep)
         case .interests:
-            InterestsSlide(selectedInterests: $selectedInterests)
+            InterestsSlide(selectedInterests: $selectedInterests, onContinue: nextStep)
         case .theme:
             ThemeStyleSlide(style: $selectedStyle, accent: $selectedAccent, onContinue: nextStep)
         case .fitness:
@@ -265,8 +262,6 @@ struct OnboardingContainerView: View {
             WealthSlide(goals: $wealthGoals, risk: $riskTolerance, monthlyBudget: $monthlyBudget, onSkip: nextStep)
         case .relationships:
             RelationshipsSlide(focuses: $relationshipFocuses, weeklyHours: $weeklySocialHours, onSkip: nextStep)
-        case .motivation:
-            MotivationSlide(prefs: $motivationPrefs)
         case .summary:
             summarySlideView
         }
@@ -286,7 +281,6 @@ struct OnboardingContainerView: View {
             onEditNutrition: { step = indexOf(.nutrition) },
             onEditBusiness: { step = indexOf(.business) },
             onEditCreativity: { step = indexOf(.creativity) },
-            onEditMotivation: { step = indexOf(.motivation) },
             onComplete: completeOnboarding
         )
     }
@@ -491,6 +485,7 @@ private struct NutritionPlaceholder: View {
 
 private struct WelcomeSlide: View {
     @EnvironmentObject var themeProvider: ThemeProvider
+    var onContinue: () -> Void = {}
     
     var body: some View {
         VStack(spacing: 24) {
@@ -499,30 +494,36 @@ private struct WelcomeSlide: View {
             // Dynamic icon with gradient background
             ZStack {
                 Circle()
-                    .fill(themeProvider.theme.accent.opacity(0.2))
+                    .fill(themeProvider.theme.accent.opacity(0.25))
                     .frame(width: 120, height: 120)
-                    .blur(radius: 20)
+                    .blur(radius: 16)
+                Circle()
+                    .fill(themeProvider.theme.backgroundSecondary.opacity(0.6))
+                    .frame(width: 90, height: 90)
                 
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 60, weight: .light))
-                    .foregroundColor(themeProvider.theme.accent)
-                    .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 10)
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .shadow(color: Color.black.opacity(0.1), radius: 8)
             }
             
             VStack(spacing: 12) {
                 Text("Welcome to Flowmate")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.center)
                 
                 Text("Your AI assistant that adapts to YOUR passions")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.center)
                 
                 Text("Fitness • Business • Mindset • Creativity • Goals")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(themeProvider.theme.accent)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.center)
                     .padding(.top, 8)
             }
@@ -532,11 +533,13 @@ private struct WelcomeSlide: View {
             VStack(spacing: 8) {
                 Text("Let's personalize your experience")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .readableText()
+                    .readableTextBackdrop()
                 
                 Text("Takes less than 2 minutes")
                     .font(.system(size: 14))
-                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .readableText()
+                    .readableTextBackdrop()
             }
             .overlay(alignment: .topLeading) {
                 Image(systemName: "sparkles")
@@ -545,7 +548,25 @@ private struct WelcomeSlide: View {
             }
         }
         .padding(.horizontal, 24)
+        .padding(.bottom, 24)
         .background(Color.clear)
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                Button(action: onContinue) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(themeProvider.theme.accent)
+                        .clipShape(Circle())
+                        .shadow(color: themeProvider.theme.accent.opacity(0.35), radius: 10, x: 0, y: 6)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 20)
+                .padding(.bottom, 6)
+            }
+        }
     }
 }
 
@@ -554,18 +575,21 @@ private struct WelcomeSlide: View {
 private struct InterestsSlide: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @Binding var selectedInterests: Set<UserInterest>
+    var onContinue: () -> Void = {}
     
     var body: some View {
         VStack(spacing: 20) {
             VStack(spacing: 12) {
                 Text("What drives you?")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.center)
                 
                 Text("Select all that inspire and motivate you")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 20)
@@ -609,6 +633,23 @@ private struct InterestsSlide: View {
             Spacer()
         }
         .background(Color.clear)
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                Button(action: onContinue) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(themeProvider.theme.accent)
+                        .clipShape(Circle())
+                        .shadow(color: themeProvider.theme.accent.opacity(0.35), radius: 10, x: 0, y: 6)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 20)
+                .padding(.bottom, 6)
+            }
+        }
     }
 }
 
@@ -652,14 +693,14 @@ private struct InterestCard: View {
                 VStack(spacing: 6) {
                     Text(interest.title)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
+                        .readableText()
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     
                     Text(interest.subtitle)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
+                        .readableText()
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -866,35 +907,7 @@ private struct NutritionSlide: View {
     }
 }
 
-private struct MotivationSlide: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @Binding var prefs: MotivationPreferences
-    
-    var body: some View {
-        Form {
-            Picker("Style", selection: $prefs.communicationStyle) {
-                ForEach(CommunicationStyle.allCases, id: \.self) { cs in
-                    Text(cs.displayName).tag(cs)
-                }
-            }
-            Picker("Reminders", selection: $prefs.reminderFrequency) {
-                ForEach(ReminderFrequency.allCases, id: \.self) { rf in
-                    Text(rf.displayName).tag(rf)
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .listStyle(.insetGrouped)
-        .tint(themeProvider.theme.accent)
-        .overlay(alignment: .topLeading) {
-            Image(systemName: "bolt.heart.fill")
-                .foregroundStyle(themeProvider.theme.accent)
-                .padding(.leading, 24)
-        }
-        .tipBanner(icon: "lightbulb", text: "Choose a style. You can change this anytime in Profile > Theme.")
-    }
-}
+// MotivationSlide removed: Reminders tab temporarily disabled per design
 
 // MARK: - Revolutionary Theme Style Selection
 private struct ThemeStyleSlide: View {
@@ -904,7 +917,8 @@ private struct ThemeStyleSlide: View {
     var onContinue: () -> Void = {}
     
     var body: some View {
-        VStack(spacing: 24) {
+        ScrollView {
+            VStack(spacing: 24) {
             // Beautiful header
             VStack(spacing: 12) {
                 HStack {
@@ -919,7 +933,8 @@ private struct ThemeStyleSlide: View {
                 
                 Text("Pick a visual style that matches your energy and personality")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .readableText()
+                    .readableTextBackdrop()
                     .multilineTextAlignment(.leading)
             }
             .padding(.horizontal, 24)
@@ -1056,12 +1071,32 @@ private struct ThemeStyleSlide: View {
                     .font(.caption)
                 Text("You can change these anytime in Settings")
                     .font(.caption)
-                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .readableText()
+                    .readableTextBackdrop(cornerRadius: 8)
                 Spacer()
             }
             .padding(.horizontal, 24)
             
             Spacer()
+            }
+            .padding(.bottom, 24)
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                Button(action: onContinue) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(themeProvider.theme.accent)
+                        .clipShape(Circle())
+                        .shadow(color: themeProvider.theme.accent.opacity(0.35), radius: 10, x: 0, y: 6)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 20)
+                .padding(.bottom, 6)
+            }
         }
         .onChange(of: style) { _, new in
             themeProvider.setTheme(style: new, accent: accent)
@@ -1142,50 +1177,72 @@ struct StyleCard: View {
     private var styleGradient: LinearGradient {
         switch style {
         case .energetic:
+            // Electric coral-to-sunset gradient (matches ThemedBackground)
             return LinearGradient(
-                colors: [Color.primaryCoral, Color.warmGold],
+                colors: [
+                    Color(red: 255/255, green: 107/255, blue: 107/255), // Electric coral
+                    Color(red: 255/255, green: 154/255, blue: 158/255), // Coral light
+                    Color(red: 255/255, green: 183/255, blue: 77/255),  // Warm gold
+                    Color(red: 255/255, green: 204/255, blue: 128/255)  // Golden cream
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         case .professional:
+            // Sophisticated blue-steel gradient (matches ThemedBackground)
             return LinearGradient(
-                colors: [Color.deepOcean, Color.businessBlue],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .mindful:
-            return LinearGradient(
-                colors: [Color.mindsetLavender, Color.mindsetRose],
+                colors: [
+                    Color(red: 116/255, green: 185/255, blue: 255/255), // Business blue bright
+                    Color(red: 72/255, green: 126/255, blue: 176/255),  // Deep ocean
+                    Color(red: 162/255, green: 155/255, blue: 254/255), // Business purple
+                    Color(red: 244/255, green: 247/255, blue: 251/255)  // Cool mist
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         case .creative:
+            // Ethereal pink-to-lavender gradient (matches ThemedBackground)
             return LinearGradient(
-                colors: [Color.creativePink, Color.creativeViolet],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .balanced:
-            return LinearGradient(
-                colors: [Color.warmGold, Color.primaryCoral.opacity(0.7)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .calm:
-            return LinearGradient(
-                colors: [Color.mindsetLavender.opacity(0.6), Color.deepOcean.opacity(0.4)],
+                colors: [
+                    Color(red: 255/255, green: 107/255, blue: 129/255), // Creative pink
+                    Color(red: 196/255, green: 69/255, blue: 105/255),  // Creative violet
+                    Color(red: 253/255, green: 203/255, blue: 110/255), // Mindset lavender
+                    Color(red: 255/255, green: 182/255, blue: 193/255)  // Soft rose
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         case .minimal:
+            // Clean minimalist gradient
             return LinearGradient(
-                colors: [Color.borderMedium, Color.backgroundSecondary],
+                colors: [
+                    Color(red: 246/255, green: 248/255, blue: 250/255), // Light gray
+                    Color.white,                                        // Pure white
+                    Color(red: 249/255, green: 250/255, blue: 251/255)  // Off-white
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         case .playful:
+            // Vibrant rainbow-burst gradient (matches ThemedBackground)
             return LinearGradient(
-                colors: [Color.motivationalOrangeLight, Color.fitnessGreen.opacity(0.7)],
+                colors: [
+                    Color(red: 255/255, green: 107/255, blue: 129/255), // Creative pink
+                    Color(red: 255/255, green: 154/255, blue: 158/255), // Coral light
+                    Color(red: 255/255, green: 183/255, blue: 77/255),  // Warm gold
+                    Color(red: 85/255, green: 239/255, blue: 196/255)   // Fitness green
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .dark:
+            // Sophisticated dark gradient (matches ThemedBackground)
+            return LinearGradient(
+                colors: [
+                    Color(red: 44/255, green: 44/255, blue: 46/255),   // iOS dark tertiary
+                    Color(red: 28/255, green: 28/255, blue: 30/255),   // iOS dark secondary
+                    Color(red: 0/255, green: 0/255, blue: 0/255)       // Pure black
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -1264,25 +1321,21 @@ extension ThemeStyle {
         switch self {
         case .energetic: return "Energetic"
         case .professional: return "Professional"
-        case .mindful: return "Mindful"
         case .creative: return "Creative"
-        case .balanced: return "Balanced"
-        case .calm: return "Calm"
         case .minimal: return "Minimal"
         case .playful: return "Playful"
+        case .dark: return "Dark"
         }
     }
     
     var description: String {
         switch self {
-        case .energetic: return "High energy & motivation"
-        case .professional: return "Clean & productive"
-        case .mindful: return "Peaceful & centered"
-        case .creative: return "Artistic & expressive"
-        case .balanced: return "Harmonious & versatile"
-        case .calm: return "Soothing & tranquil"
-        case .minimal: return "Simple & focused"
-        case .playful: return "Fun & vibrant"
+        case .energetic: return "Electric coral sunset vibes"
+        case .professional: return "Sophisticated blue steel"
+        case .creative: return "Ethereal pink lavender dreams"
+        case .minimal: return "Pure elegant simplicity"
+        case .playful: return "Vibrant rainbow burst"
+        case .dark: return "Sleek sophisticated dark"
         }
     }
 }
@@ -1446,58 +1499,55 @@ private struct SummarySlide: View {
     let onEditNutrition: () -> Void
     let onEditBusiness: () -> Void
     let onEditCreativity: () -> Void
-    let onEditMotivation: () -> Void
     let onComplete: () -> Void
     
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-            
-            // Beautiful success animation with particles
-            ZStack {
-                // Animated background circles
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    themeProvider.theme.accent.opacity(0.3),
-                                    themeProvider.theme.accent.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+        ScrollView {
+            VStack(spacing: 24) {
+                // Beautiful success animation with particles
+                ZStack {
+                    // Animated background circles
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        themeProvider.theme.accent.opacity(0.3),
+                                        themeProvider.theme.accent.opacity(0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 120 - CGFloat(index * 20), height: 120 - CGFloat(index * 20))
-                        .blur(radius: 10 + CGFloat(index * 5))
-                        .scaleEffect(1.0 + sin(Date().timeIntervalSince1970 + Double(index)) * 0.1)
-                        .animation(.easeInOut(duration: 2.0 + Double(index)).repeatForever(autoreverses: true), value: UUID())
+                            .frame(width: 120 - CGFloat(index * 20), height: 120 - CGFloat(index * 20))
+                            .blur(radius: 10 + CGFloat(index * 5))
+                            .scaleEffect(1.0 + sin(Date().timeIntervalSince1970 + Double(index)) * 0.1)
+                            .animation(.easeInOut(duration: 2.0 + Double(index)).repeatForever(autoreverses: true), value: UUID())
+                    }
+                    
+                    // Central success icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                            .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
+                        
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                 }
                 
-                // Central success icon
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 80, height: 80)
-                        .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
-                    
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.white)
-                }
-            }
-            
-            // Revolutionary messaging
-            VStack(spacing: 20) {
+                // Revolutionary messaging
                 VStack(spacing: 12) {
                     Text("🎉 Welcome to your flow!")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [themeProvider.theme.textPrimary, themeProvider.theme.accent],
@@ -1506,111 +1556,100 @@ private struct SummarySlide: View {
                             )
                         )
                         .multilineTextAlignment(.center)
-                    
-                    Text("Flowmate is now personalizing")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Text("Flowmate is now personalizing your entire experience")
+                        .font(.system(size: 16, weight: .semibold))
+                        .readableText()
                         .multilineTextAlignment(.center)
-                    
-                    Text("your entire experience")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.accent)
-                        .multilineTextAlignment(.center)
-                }
-                
-                VStack(spacing: 8) {
-                    Text("Your AI companion will adapt its interface, personality, and guidance to match what truly drives and motivates YOU.")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
+                    Text("Your AI companion adapts interface, personality, and guidance to match what truly drives you.")
+                        .font(.system(size: 14, weight: .medium))
+                        .readableText()
+                        .readableTextBackdrop()
                         .multilineTextAlignment(.center)
                         .lineSpacing(2)
-                    
-                    Text("This is complete personalization - not just content, but your entire flow experience.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(themeProvider.theme.accent.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .italic()
-                        .padding(.top, 4)
+                        .padding(.top, 2)
                 }
-            }
-            
-            Spacer()
-            
-            // Beautiful personalization summary
-            VStack(spacing: 16) {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(themeProvider.theme.accent)
-                        .font(.title2)
-                    Text("Your Personalized Setup")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    Spacer()
-                }
+                .padding(.horizontal, 8)
                 
-                // Dynamic interest pills
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
-                    ForEach(Array(selectedInterests), id: \.self) { interest in
-                        HStack(spacing: 6) {
-                            Image(systemName: interest.icon)
-                                .font(.caption)
-                                .foregroundColor(themeProvider.theme.accent)
-                            Text(interest.title)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(themeProvider.theme.accent.opacity(0.1))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
-                                )
-                        )
+                // Beautiful personalization summary
+                VStack(spacing: 16) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(themeProvider.theme.accent)
+                            .font(.title2)
+                        Text("Your Personalized Setup")
+                            .font(.system(size: 18, weight: .bold))
+                            .readableText()
+                            .readableTextBackdrop()
+                        Spacer()
                     }
+                    
+                    // Dynamic interest pills
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+                        ForEach(Array(selectedInterests), id: \.self) { interest in
+                            HStack(spacing: 6) {
+                                Image(systemName: interest.icon)
+                                    .font(.caption)
+                                    .foregroundColor(themeProvider.theme.accent)
+                                Text(interest.title)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(themeProvider.theme.textPrimary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(themeProvider.theme.accent.opacity(0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                        }
+                    }
+                    
+                    // Theme preview
+                    HStack {
+                        Image(systemName: "paintpalette.fill")
+                            .foregroundColor(themeProvider.theme.accent)
+                            .font(.caption)
+                        Text("\(selectedStyle.displayName) • \(selectedAccent.displayName)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeProvider.theme.textSecondary)
+                        Spacer()
+                        Circle()
+                            .fill(themeProvider.theme.accent)
+                            .frame(width: 16, height: 16)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(themeProvider.theme.backgroundSecondary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.borderLight, lineWidth: 1)
+                            )
+                    )
                 }
-                
-                // Theme preview
-                HStack {
-                    Image(systemName: "paintpalette.fill")
-                        .foregroundColor(themeProvider.theme.accent)
-                        .font(.caption)
-                    Text("\(selectedStyle.displayName) • \(selectedAccent.displayName)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                    Spacer()
-                    Circle()
-                        .fill(themeProvider.theme.accent)
-                        .frame(width: 16, height: 16)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(20)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(themeProvider.theme.backgroundSecondary)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.borderLight, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            LinearGradient(
+                                colors: [themeProvider.theme.backgroundSecondary, themeProvider.theme.backgroundPrimary],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                 )
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(
-                        LinearGradient(
-                            colors: [themeProvider.theme.backgroundSecondary, themeProvider.theme.backgroundPrimary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-            )
-            
-            // Revolutionary enter button
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 100)
+        }
+        .safeAreaInset(edge: .bottom) {
             Button(action: onComplete) {
                 HStack(spacing: 16) {
                     Image(systemName: "brain.head.profile")
@@ -1632,12 +1671,12 @@ private struct SummarySlide: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
-                .padding(.vertical, 20)
+                .padding(.vertical, 18)
                 .background(
                     LinearGradient(
                         colors: [
                             themeProvider.theme.accent,
-                            themeProvider.theme.accent.opacity(0.8),
+                            themeProvider.theme.accent.opacity(0.85),
                             themeProvider.theme.emphasis
                         ],
                         startPoint: .topLeading,
@@ -1651,10 +1690,8 @@ private struct SummarySlide: View {
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.horizontal, 24)
-            
-            Spacer(minLength: 40)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 24)
     }
 }
 

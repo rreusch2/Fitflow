@@ -89,7 +89,7 @@ private struct WelcomeSlide: View {
             Image(systemName: "figure.run")
                 .font(.system(size: 80))
                 .foregroundColor(.primaryGreen)
-            Text("Welcome to NexusGPT")
+            Text("Welcome to Flowmate")
                 .font(.title)
                 .fontWeight(.bold)
             Text("Personalize your experience in under a minute.")
@@ -182,7 +182,7 @@ private struct SummarySlide: View {
             Text("You're all set")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("We'll tailor NexusGPT to your vibe and goals.")
+            Text("We'll tailor Flowmate to your vibe and goals.")
                 .foregroundColor(.textSecondary)
             Spacer()
             Button(action: onComplete) {

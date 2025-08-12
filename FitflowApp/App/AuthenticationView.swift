@@ -24,7 +24,7 @@ struct AuthenticationView: View {
                 Image(systemName: "figure.run")
                     .font(.system(size: 64))
                     .foregroundColor(themeProvider.theme.accent)
-                Text("NexusGPT")
+                Text("Flowmate")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 

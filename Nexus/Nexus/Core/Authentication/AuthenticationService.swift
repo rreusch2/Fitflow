@@ -434,7 +434,7 @@ extension AuthenticationService {
             wealth: WealthPreferences(goals: [.saving, .investing], risk: .moderate, monthlyBudget: 500),
             relationships: RelationshipPreferences(focuses: [.friendships, .networking], weeklySocialHours: 6),
             theme: ThemePreferences(
-                style: .balanced,
+                style: .energetic,
                 accent: .coral,
                 selectedInterests: [.fitness, .mindset, .business]
             ),

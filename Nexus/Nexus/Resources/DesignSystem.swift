@@ -15,6 +15,10 @@ extension Color {
     static let primaryCoralDark = Color(red: 238/255, green: 82/255, blue: 83/255) // #EE5253
     static let primaryCoralLight = Color(red: 255/255, green: 154/255, blue: 158/255) // #FF9A9E
     
+    // === HIGH CONTRAST TEXT COLORS FOR READABILITY ===
+    static let readableTextOnLight = Color(red: 26/255, green: 32/255, blue: 46/255) // #1A202E - Dark slate
+    static let readableTextOnDark = Color(red: 250/255, green: 250/255, blue: 250/255) // #FAFAFA - Near white
+    
     // Warm Gold - Success & Achievement
     static let warmGold = Color(red: 255/255, green: 183/255, blue: 77/255) // #FFB74D
     static let warmGoldDark = Color(red: 255/255, green: 152/255, blue: 0/255) // #FF9800
@@ -73,21 +77,57 @@ extension Color {
     static let motivationalOrange = warmGold
     static let motivationalOrangeLight = Color(red: 255/255, green: 204/255, blue: 128/255) // #FFCC80
     
-    // === GRADIENT COMBINATIONS ===
+    // === STUNNING GRADIENT COMBINATIONS ===
     static let energeticGradient = LinearGradient(
-        colors: [primaryCoral, warmGold],
+        colors: [
+            Color(red: 255/255, green: 107/255, blue: 107/255), // Electric coral
+            Color(red: 255/255, green: 154/255, blue: 158/255), // Coral light
+            Color(red: 255/255, green: 183/255, blue: 77/255),  // Warm gold
+            Color(red: 255/255, green: 204/255, blue: 128/255)  // Golden cream
+        ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
     static let professionalGradient = LinearGradient(
-        colors: [deepOcean, businessBlue],
+        colors: [
+            Color(red: 116/255, green: 185/255, blue: 255/255), // Business blue bright
+            Color(red: 72/255, green: 126/255, blue: 176/255),  // Deep ocean
+            Color(red: 162/255, green: 155/255, blue: 254/255), // Business purple
+            Color(red: 244/255, green: 247/255, blue: 251/255)  // Cool mist
+        ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
-    static let warmGradient = LinearGradient(
-        colors: [mindsetLavender, mindsetRose],
+    static let creativeGradient = LinearGradient(
+        colors: [
+            Color(red: 255/255, green: 107/255, blue: 129/255), // Creative pink
+            Color(red: 196/255, green: 69/255, blue: 105/255),  // Creative violet
+            Color(red: 253/255, green: 203/255, blue: 110/255), // Mindset lavender
+            Color(red: 255/255, green: 182/255, blue: 193/255)  // Soft rose
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let playfulGradient = LinearGradient(
+        colors: [
+            Color(red: 255/255, green: 107/255, blue: 129/255), // Creative pink
+            Color(red: 255/255, green: 154/255, blue: 158/255), // Coral light
+            Color(red: 255/255, green: 183/255, blue: 77/255),  // Warm gold
+            Color(red: 85/255, green: 239/255, blue: 196/255)   // Fitness green
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let darkGradient = LinearGradient(
+        colors: [
+            Color(red: 44/255, green: 44/255, blue: 46/255),   // iOS dark tertiary
+            Color(red: 28/255, green: 28/255, blue: 30/255),   // iOS dark secondary
+            Color(red: 0/255, green: 0/255, blue: 0/255)       // Pure black
+        ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -174,12 +214,68 @@ struct ThemedBackground: View {
     var body: some View {
         Group {
             switch themeProvider.style {
-            case .energetic, .playful:
-                Color.energeticGradient
-            case .professional, .calm, .minimal:
-                Color.professionalGradient
-            case .mindful, .creative, .balanced:
-                Color.warmGradient
+            case .energetic:
+                // Electric coral-to-sunset gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 255/255, green: 107/255, blue: 107/255).opacity(0.25), // Electric coral
+                        Color(red: 255/255, green: 154/255, blue: 158/255).opacity(0.18), // Coral light
+                        Color(red: 255/255, green: 183/255, blue: 77/255).opacity(0.15),  // Warm gold
+                        Color(red: 255/255, green: 204/255, blue: 128/255).opacity(0.12)  // Golden cream
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .professional:
+                // Sophisticated blue-steel gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 116/255, green: 185/255, blue: 255/255).opacity(0.15), // Business blue bright
+                        Color(red: 72/255, green: 126/255, blue: 176/255).opacity(0.12),  // Deep ocean
+                        Color(red: 162/255, green: 155/255, blue: 254/255).opacity(0.08), // Business purple
+                        Color(red: 244/255, green: 247/255, blue: 251/255).opacity(0.3)   // Cool mist
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .creative:
+                // Ethereal pink-to-lavender gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 255/255, green: 107/255, blue: 129/255).opacity(0.2),  // Creative pink
+                        Color(red: 196/255, green: 69/255, blue: 105/255).opacity(0.15),  // Creative violet
+                        Color(red: 253/255, green: 203/255, blue: 110/255).opacity(0.12), // Mindset lavender
+                        Color(red: 255/255, green: 182/255, blue: 193/255).opacity(0.1)   // Soft rose
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .minimal:
+                // Pure elegant white
+                Color.white
+            case .playful:
+                // Vibrant rainbow-burst gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 255/255, green: 107/255, blue: 129/255).opacity(0.2),  // Creative pink
+                        Color(red: 255/255, green: 154/255, blue: 158/255).opacity(0.15), // Coral light
+                        Color(red: 255/255, green: 183/255, blue: 77/255).opacity(0.12),  // Warm gold
+                        Color(red: 85/255, green: 239/255, blue: 196/255).opacity(0.1)    // Fitness green
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .dark:
+                // Sophisticated dark gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 0/255, green: 0/255, blue: 0/255),           // Pure black
+                        Color(red: 28/255, green: 28/255, blue: 30/255),        // iOS dark secondary
+                        Color(red: 44/255, green: 44/255, blue: 46/255).opacity(0.3) // iOS dark tertiary
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             }
         }
         .ignoresSafeArea()
@@ -188,6 +284,7 @@ struct ThemedBackground: View {
 
 struct GlassCard: ViewModifier {
     let cornerRadius: CGFloat
+    @EnvironmentObject var themeProvider: ThemeProvider
     
     init(cornerRadius: CGFloat = CornerRadius.lg) {
         self.cornerRadius = cornerRadius
@@ -197,14 +294,19 @@ struct GlassCard: ViewModifier {
         content
             .padding(Spacing.lg)
             .background(
-                .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
-            .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                    .fill(themeProvider.theme.backgroundSecondary.opacity(themeProvider.style == .dark ? 0.8 : 0.9))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1.5)
+                    )
             )
-            .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 12)
+            .shadow(
+                color: themeProvider.style == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
     }
 }
 
@@ -236,6 +338,94 @@ extension View {
             .padding(.horizontal)
             .padding(.top)
         }
+    }
+
+    // High-contrast text that works on all backgrounds
+    func readableText() -> some View {
+        self.foregroundColor(Color(red: 26/255, green: 32/255, blue: 46/255)) // Ultra high contrast dark
+    }
+    
+    // Pristine backdrop for perfect readability on gradients
+    func readableTextBackdrop(cornerRadius: CGFloat = 12) -> some View {
+        self
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.98))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(Color.black.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+            )
+    }
+    
+    // Enhanced backdrop with subtle elegance
+    func elegantBackdrop(cornerRadius: CGFloat = 14) -> some View {
+        self
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.96),
+                                Color.white.opacity(0.94)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.black.opacity(0.08),
+                                        Color.black.opacity(0.06)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.8
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            )
+    }
+    
+    // Performance-optimized backdrop with theme awareness
+    func themeAwareBackdrop() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.94))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.black.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
+            )
+    }
+    
+    // Smart text color that adapts to the current theme style
+    func smartTextColor(theme: ThemeProvider) -> some View {
+        self.foregroundColor(
+            theme.style == .dark ? Color.white : 
+            (theme.style == .minimal ? theme.theme.textPrimary : Color.white)
+        )
+    }
+    
+    // Smart secondary text color that adapts to the current theme style  
+    func smartSecondaryTextColor(theme: ThemeProvider) -> some View {
+        self.foregroundColor(
+            theme.style == .dark ? Color(red: 174/255, green: 174/255, blue: 178/255) :
+            (theme.style == .minimal ? theme.theme.textSecondary : Color.white.opacity(0.85))
+        )
     }
 }
 

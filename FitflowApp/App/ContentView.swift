@@ -58,7 +58,7 @@ struct SplashView: View {
                     .scaleEffect(scale)
                     .opacity(opacity)
                 
-                Text("NexusGPT")
+                Text("Flowmate")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
