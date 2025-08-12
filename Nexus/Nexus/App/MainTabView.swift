@@ -93,19 +93,10 @@ struct MainTabView: View {
     
     private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView)] {
         // Define all possible tabs
+        // Only include tabs that have concrete implementations in this file to avoid build errors.
         let allPossibleTabs: [UserInterest: (title: String, icon: String, view: AnyView)] = [
             .fitness: ("Fitness", "figure.run", AnyView(FitnessView())),
-            .business: ("Business", "briefcase.fill", AnyView(BusinessView())),
-            .mindset: ("Mindset", "brain.head.profile", AnyView(MindsetView())),
-            .creativity: ("Create", "paintbrush.fill", AnyView(CreativityView())),
-            .wealth: ("Wealth", "dollarsign.circle.fill", AnyView(WealthView())),
-            .relationships: ("Connect", "heart.fill", AnyView(RelationshipsView())),
-            .learning: ("Learn", "book.fill", AnyView(LearningView())),
-            .spirituality: ("Spirit", "leaf.fill", AnyView(SpiritualityView())),
-            .adventure: ("Adventure", "mountain.2.fill", AnyView(AdventureView())),
-            .leadership: ("Lead", "crown.fill", AnyView(LeadershipView())),
-            .health: ("Health", "mind.head.profile", AnyView(HealthView())),
-            .family: ("Family", "house.fill", AnyView(FamilyView()))
+            .wealth: ("Wealth", "dollarsign.circle.fill", AnyView(WealthView()))
         ]
         
         // Return tabs in user's preferred order and selection
@@ -121,17 +112,7 @@ struct MainTabView: View {
         // Define all possible tabs with priority weights
         let allPossibleTabs: [(interest: UserInterest, title: String, icon: String, view: AnyView, weight: Int)] = [
             (.fitness, "Fitness", "figure.run", AnyView(FitnessView()), getInterestWeight(.fitness)),
-            (.business, "Business", "briefcase.fill", AnyView(BusinessView()), getInterestWeight(.business)),
-            (.mindset, "Mindset", "brain.head.profile", AnyView(MindsetView()), getInterestWeight(.mindset)),
-            (.creativity, "Create", "paintbrush.fill", AnyView(CreativityView()), getInterestWeight(.creativity)),
-            (.wealth, "Wealth", "dollarsign.circle.fill", AnyView(WealthView()), getInterestWeight(.wealth)),
-            (.relationships, "Connect", "heart.fill", AnyView(RelationshipsView()), getInterestWeight(.relationships)),
-            (.learning, "Learn", "book.fill", AnyView(LearningView()), getInterestWeight(.learning)),
-            (.spirituality, "Spirit", "leaf.fill", AnyView(SpiritualityView()), getInterestWeight(.spirituality)),
-            (.adventure, "Adventure", "mountain.2.fill", AnyView(AdventureView()), getInterestWeight(.adventure)),
-            (.leadership, "Lead", "crown.fill", AnyView(LeadershipView()), getInterestWeight(.leadership)),
-            (.health, "Health", "mind.head.profile", AnyView(HealthView()), getInterestWeight(.health)),
-            (.family, "Family", "house.fill", AnyView(FamilyView()), getInterestWeight(.family))
+            (.wealth, "Wealth", "dollarsign.circle.fill", AnyView(WealthView()), getInterestWeight(.wealth))
         ]
         
         // Filter to user's selected interests, sort by priority weight, and take top maxTabs
@@ -543,7 +524,7 @@ private struct AgentPanel: View {
         Task {
             do {
                 let response = try await AIService.shared.generateChatResponse(
-                    messages: [ChatMessage(role: .user, content: input)],
+                    messages: [ChatMessage(id: UUID(), role: .user, content: input, timestamp: Date())],
                     user: user,
                     context: context
                 )
@@ -553,6 +534,70 @@ private struct AgentPanel: View {
             }
             await MainActor.run { self.isLoading = false }
         }
+    }
+}
+
+// MARK: - Placeholder Components to satisfy references
+
+private struct EnhancedFeedCard: View {
+    let item: FeedItem
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(item.title)
+                    .font(.headline)
+                Spacer()
+                Text(item.topicTags.first?.capitalized ?? "")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(item.summary ?? "")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.backgroundSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.borderLight, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+}
+
+private struct StatsCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 28, height: 28)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.headline)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.backgroundSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.borderLight, lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -1358,197 +1403,15 @@ private struct FitnessView: View {
                     }
                     .padding(20)
                     .background(
-    
-    var body: some View {
-        Button {
-            // Open coach overlay
-        } label: {
-            Image(systemName: "brain.head.profile")
-                .font(.title2)
-                .foregroundColor(themeProvider.theme.accent)
-                .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(themeProvider.theme.backgroundSecondary)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                )
-        }
-    }
-}
-
-// MARK: - Coach Overlay
-
-private struct CoachOverlay: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Your Coach")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(themeProvider.theme.textPrimary)
-            
-            Text("Get personalized guidance and support")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(themeProvider.theme.textSecondary)
-            
-            // Coach profile
-            HStack {
-                Image(systemName: "person.circle.fill")
-                    .font(.title)
-                    .foregroundColor(themeProvider.theme.accent)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Coach Name")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Specialization")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-            }
-            
-            // Call to action
-            Button {
-                // Start coaching session
-            } label: {
-                Text("Start Session")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(themeProvider.theme.backgroundSecondary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.borderLight, lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.backgroundSecondary)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-        )
-    }
-}
 
-// MARK: - Agent Panel
-
-private struct AgentPanel: View {
-    let title: String
-    let icon: String
-    let context: AgentContext
-    let presets: [AgentPrompt]
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundColor(themeProvider.theme.accent)
-                
-                Text(title)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textPrimary)
-                
-                Spacer()
-            }
-            
-            // Presets
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                ForEach(presets, id: \.self) { preset in
-                    Button {
-                        // Handle preset action
-                    } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(preset.title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                            
-                            Text(preset.prompt)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textSecondary)
-                                .lineLimit(2)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(themeProvider.theme.backgroundSecondary)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.borderLight, lineWidth: 1)
-                                )
-                        )
-                    }
-                }
-            }
-            
-            // Custom prompt
-            HStack {
-                Image(systemName: "pencil.tip")
-                    .font(.title3)
-                    .foregroundColor(themeProvider.theme.accent)
-                
-                Text("Ask a custom question")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textPrimary)
-                
-                Spacer()
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(themeProvider.theme.backgroundSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.borderLight, lineWidth: 1)
-                    )
-            )
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(themeProvider.theme.backgroundSecondary)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-        )
-    }
-}
-
-// MARK: - Agent Prompt
-
-private struct AgentPrompt: Identifiable {
-    let id = UUID()
-    let title: String
-    let prompt: String
-}
-
-// MARK: - Agent Context
-
-private enum AgentContext {
-    case workout
-    case general
-}
-
-// MARK: - Integration into FitnessView and WealthView
-
-private struct FitnessView: View {
-    // ...
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // ...
-                    
                     // AI Workout Agent
                     if authService.currentUser != nil {
                         AgentPanel(
@@ -1565,8 +1428,6 @@ private struct FitnessView: View {
                         .environmentObject(authService)
                         .padding(.horizontal, 20)
                     }
-                    
-                    // ...
                 }
                 .padding(.bottom, 20)
             }
@@ -1584,53 +1445,18 @@ private struct FitnessView: View {
             }
         }
     }
-}
-
-private struct WealthView: View {
-    // ...
     
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // ...
-                    
-                    // AI Wealth Agent
-                    if authService.currentUser != nil {
-                        AgentPanel(
-                            title: "Wealth Agent",
-                            icon: "dollarsign.square.fill",
-                            context: .general,
-                            presets: [
-                                AgentPrompt(title: "Budget Plan", prompt: "Create a personalized monthly budget aligned with my wealth goals and preferences. Include savings targets and discretionary guidelines."),
-                                AgentPrompt(title: "Investing Next Steps", prompt: "Suggest next 3 actionable investing steps considering my risk tolerance and goals. Include simple rationale and risk notes."),
-                                AgentPrompt(title: "Optimize Expenses", prompt: "Analyze typical expense categories and propose practical ways to reduce costs without sacrificing quality of life.")
-                            ]
-                        )
-                        .environmentObject(themeProvider)
-                        .environmentObject(authService)
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    // ...
-                }
-                .padding(.bottom, 20)
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Wealth")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // Open wealth settings
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
-                }
-            }
-        }
+    var personalizedSubtitle: String {
+        // TODO: Implement personalizedSubtitle
+        return "Your personalized subtitle"
+    }
+    
+    var todaysFocus: String {
+        // TODO: Implement todaysFocus
+        return "Today's focus"
     }
 }
+
 
 private extension View {
     func shimmer() -> some View { 
