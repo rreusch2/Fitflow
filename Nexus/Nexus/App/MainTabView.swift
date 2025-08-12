@@ -16,49 +16,72 @@ struct MainTabView: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     
     @State private var selectedTab: Int = 0
+    @State private var showCoach: Bool = false
     
     private var userInterests: [UserInterest] {
         authService.currentUser?.preferences?.theme.selectedInterests ?? []
     }
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             TabView(selection: $selectedTab) {
-                // Always show the main feed
-                PersonalizedFeedView()
-                    .tabItem {
-                        Label("Flow", systemImage: "brain.head.profile")
-                    }
-                    .tag(0)
-                
-                // Dynamic tabs based on user interests with AI enhancement
-                ForEach(Array(dynamicTabs.enumerated()), id: \.offset) { index, tab in
-                    getEnhancedTabView(for: tab.interest)
-                        .tabItem {
-                            Label(tab.title, systemImage: tab.icon)
-                        }
-                        .tag(index + 1)
+            // Always show the main feed
+            PersonalizedFeedView()
+                .tabItem {
+                    Label("Flow", systemImage: "brain.head.profile")
                 }
-                
-                // Always show profile (Coach is now floating)
-                ProfileView()
+                .tag(0)
+            
+            // Dynamic tabs based on user interests
+            ForEach(Array(dynamicTabs.enumerated()), id: \.offset) { index, tab in
+                tab.view
                     .tabItem {
-                        Label("Profile", systemImage: "person.fill")
+                        Label(tab.title, systemImage: tab.icon)
                     }
-                    .tag(dynamicTabs.count + 1)
+                    .tag(index + 1)
+            }
+            
+            // Always show the AI coach
+            FlowmateCoachView()
+                .tabItem {
+                    Label("Coach", systemImage: "message.fill")
+                }
+                .tag(dynamicTabs.count + 1)
+            
+            // Always show profile
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+                .tag(dynamicTabs.count + 2)
             }
             .tint(themeProvider.theme.accent)
             .background(ThemedBackground().environmentObject(themeProvider))
-            
-            // Revolutionary Floating Coach - accessible from any tab
-            FloatingCoach()
-                .environmentObject(themeProvider)
-                .environmentObject(authService)
+
+            // Floating Coach Button
+            FloatingCoachButton(color: themeProvider.theme.accent) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showCoach.toggle()
+                }
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, 20)
+
+            // Coach Overlay
+            if showCoach {
+                CoachOverlay(isPresented: $showCoach) {
+                    FlowmateCoachView()
+                        .environmentObject(themeProvider)
+                        .environmentObject(authService)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(1)
+            }
         }
     }
     
     // Revolutionary intelligent tab system - respects user's custom tab management preferences
-    private var dynamicTabs: [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
+    private var dynamicTabs: [(title: String, icon: String, view: AnyView)] {
         // Check if user has custom tab management preferences
         if let tabVisibility = authService.currentUser?.preferences?.theme.tabVisibility {
             return getCustomizedTabs(from: tabVisibility)
@@ -68,46 +91,7 @@ struct MainTabView: View {
         }
     }
     
-    // Enhanced tab view router with AI agents
-    @ViewBuilder
-    private func getEnhancedTabView(for interest: UserInterest) -> some View {
-        switch interest {
-        case .fitness:
-            AIEnhancedTabView(interest: .fitness, originalView: AnyView(FitnessView()))
-                .environmentObject(themeProvider)
-                .environmentObject(authService)
-        case .business:
-            AIEnhancedTabView(interest: .business, originalView: AnyView(BusinessView()))
-                .environmentObject(themeProvider)
-                .environmentObject(authService)
-        case .wealth:
-            AIEnhancedTabView(interest: .wealth, originalView: AnyView(WealthView()))
-                .environmentObject(themeProvider)
-                .environmentObject(authService)
-        case .mindset:
-            AIEnhancedTabView(interest: .mindset, originalView: AnyView(MindsetView()))
-                .environmentObject(themeProvider)
-                .environmentObject(authService)
-        case .creativity:
-            CreativityView() // Keep existing for now
-        case .relationships:
-            RelationshipsView() // Keep existing for now
-        case .learning:
-            LearningView()
-        case .spirituality:
-            SpiritualityView()
-        case .adventure:
-            AdventureView()
-        case .leadership:
-            LeadershipView()
-        case .health:
-            HealthView()
-        case .family:
-            FamilyView()
-        }
-    }
-    
-    private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
+    private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView)] {
         // Define all possible tabs
         let allPossibleTabs: [UserInterest: (title: String, icon: String, view: AnyView)] = [
             .fitness: ("Fitness", "figure.run", AnyView(FitnessView())),
@@ -127,11 +111,11 @@ struct MainTabView: View {
         // Return tabs in user's preferred order and selection
         return tabVisibility.visibleTabs.compactMap { interest in
             guard let tab = allPossibleTabs[interest] else { return nil }
-            return (title: tab.title, icon: tab.icon, view: tab.view, interest: interest)
+            return (title: tab.title, icon: tab.icon, view: tab.view)
         }
     }
     
-    private func getDefaultPrioritizedTabs() -> [(title: String, icon: String, view: AnyView, interest: UserInterest)] {
+    private func getDefaultPrioritizedTabs() -> [(title: String, icon: String, view: AnyView)] {
         let maxTabs = 4 // Perfect for navigation without overcrowding
         
         // Define all possible tabs with priority weights
@@ -152,12 +136,12 @@ struct MainTabView: View {
         
         // Filter to user's selected interests, sort by priority weight, and take top maxTabs
         let prioritizedTabs = allPossibleTabs
+            .filter { userInterests.contains($0.interest) }
             .sorted { $0.weight > $1.weight }
             .prefix(maxTabs)
+            .map { (title: $0.title, icon: $0.icon, view: $0.view) }
         
-        return prioritizedTabs.map { tab in
-            (title: tab.title, icon: tab.icon, view: tab.view, interest: tab.interest)
-        }
+        return Array(prioritizedTabs)
     }
     
     // Intelligent priority weighting based on user preferences and common usage patterns
@@ -375,6 +359,199 @@ private struct PersonalizedFeedView: View {
         case "leadership": return "crown.fill"
         case "family": return "house.fill"
         default: return "sparkles"
+        }
+    }
+}
+
+// MARK: - Global Floating Coach Components
+
+private struct FloatingCoachButton: View {
+    let color: Color
+    let action: () -> Void
+    @State private var animate = false
+    
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 62, height: 62)
+                    .scaleEffect(animate ? 1.08 : 1.0)
+                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: animate)
+                Circle()
+                    .fill(color)
+                    .frame(width: 56, height: 56)
+                Image(systemName: "message.fill")
+                    .foregroundColor(.white)
+                    .font(.system(size: 22, weight: .semibold))
+            }
+            .shadow(color: color.opacity(0.35), radius: 10, x: 0, y: 6)
+        }
+        .onAppear { animate = true }
+        .accessibilityLabel("Open Coach")
+    }
+}
+
+private struct CoachOverlay<Content: View>: View {
+    @Binding var isPresented: Bool
+    let content: () -> Content
+    @EnvironmentObject var themeProvider: ThemeProvider
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Dimmed backdrop
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { isPresented = false }
+                }
+            
+            // Sheet
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(Color.white.opacity(0.3))
+                    .frame(width: 44, height: 5)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+                
+                content()
+                    .frame(maxHeight: 620)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(themeProvider.theme.backgroundPrimary)
+                    .shadow(color: Color.black.opacity(0.25), radius: 16, x: 0, y: -4)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+        }
+    }
+}
+
+// MARK: - AgentPanel (per-tab AI agent with prompt gallery)
+
+private struct AgentPrompt: Hashable {
+    let title: String
+    let prompt: String
+}
+
+private struct AgentPanel: View {
+    let title: String
+    let icon: String
+    let context: ChatContext
+    let presets: [AgentPrompt]
+    
+    @EnvironmentObject var themeProvider: ThemeProvider
+    @EnvironmentObject var authService: AuthenticationService
+    @State private var input: String = ""
+    @State private var output: String = ""
+    @State private var isLoading: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .foregroundColor(themeProvider.theme.accent)
+                Text(title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                Spacer()
+                if isLoading { ProgressView() }
+            }
+            
+            // Preset gallery
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(presets, id: \.self) { preset in
+                        Button {
+                            input = preset.prompt
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
+                                Text(preset.title)
+                            }
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(themeProvider.theme.accent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(themeProvider.theme.accent.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+            
+            // Input
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(themeProvider.theme.backgroundSecondary)
+                TextEditor(text: $input)
+                    .frame(minHeight: 80, maxHeight: 120)
+                    .padding(10)
+                    .scrollContentBackground(.hidden)
+                    .foregroundColor(themeProvider.theme.textPrimary)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(themeProvider.theme.accent.opacity(0.15), lineWidth: 1)
+            )
+            
+            Button(action: run) {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("Ask Agent")
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(themeProvider.theme.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: themeProvider.theme.accent.opacity(0.25), radius: 8, x: 0, y: 4)
+            }
+            .disabled(isLoading || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            
+            if !output.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Agent Response")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                    Text(output)
+                        .font(.system(size: 15))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                        .lineSpacing(3)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(themeProvider.theme.backgroundSecondary)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(themeProvider.theme.accent.opacity(0.1), lineWidth: 1)
+                )
+            }
+        }
+    }
+    
+    private func run() {
+        guard let user = authService.currentUser else { return }
+        isLoading = true
+        output = ""
+        Task {
+            do {
+                let response = try await AIService.shared.generateChatResponse(
+                    messages: [ChatMessage(role: .user, content: input)],
+                    user: user,
+                    context: context
+                )
+                await MainActor.run { self.output = response }
+            } catch {
+                await MainActor.run { self.output = "Error: \(error.localizedDescription)" }
+            }
+            await MainActor.run { self.isLoading = false }
         }
     }
 }
@@ -1181,32 +1358,215 @@ private struct FitnessView: View {
                     }
                     .padding(20)
                     .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.backgroundSecondary)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
-                    .padding(.horizontal, 20)
+    
+    var body: some View {
+        Button {
+            // Open coach overlay
+        } label: {
+            Image(systemName: "brain.head.profile")
+                .font(.title2)
+                .foregroundColor(themeProvider.theme.accent)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(themeProvider.theme.backgroundSecondary)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                )
+        }
+    }
+}
+
+// MARK: - Coach Overlay
+
+private struct CoachOverlay: View {
+    @EnvironmentObject var themeProvider: ThemeProvider
+    @EnvironmentObject var authService: AuthenticationService
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Your Coach")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(themeProvider.theme.textPrimary)
+            
+            Text("Get personalized guidance and support")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(themeProvider.theme.textSecondary)
+            
+            // Coach profile
+            HStack {
+                Image(systemName: "person.circle.fill")
+                    .font(.title)
+                    .foregroundColor(themeProvider.theme.accent)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Coach Name")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textPrimary)
                     
-                    // Preferred Activities
-                    if let activities = fitnessPrefs?.preferredActivities, !activities.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Your Activities")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.textPrimary)
-                                Spacer()
-                            }
+                    Text("Specialization")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                }
+            }
+            
+            // Call to action
+            Button {
+                // Start coaching session
+            } label: {
+                Text("Start Session")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeProvider.theme.backgroundSecondary)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+}
+
+// MARK: - Agent Panel
+
+private struct AgentPanel: View {
+    let title: String
+    let icon: String
+    let context: AgentContext
+    let presets: [AgentPrompt]
+    @EnvironmentObject var themeProvider: ThemeProvider
+    @EnvironmentObject var authService: AuthenticationService
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(themeProvider.theme.accent)
+                
+                Text(title)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                
+                Spacer()
+            }
+            
+            // Presets
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                ForEach(presets, id: \.self) { preset in
+                    Button {
+                        // Handle preset action
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(preset.title)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(themeProvider.theme.textPrimary)
                             
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                                ForEach(activities.prefix(4), id: \.self) { activity in
-                                    ActivityCard(activity: activity)
-                                }
-                            }
+                            Text(preset.prompt)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(themeProvider.theme.textSecondary)
+                                .lineLimit(2)
                         }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(themeProvider.theme.backgroundSecondary)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.borderLight, lineWidth: 1)
+                                )
+                        )
+                    }
+                }
+            }
+            
+            // Custom prompt
+            HStack {
+                Image(systemName: "pencil.tip")
+                    .font(.title3)
+                    .foregroundColor(themeProvider.theme.accent)
+                
+                Text("Ask a custom question")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                
+                Spacer()
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(themeProvider.theme.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.borderLight, lineWidth: 1)
+                    )
+            )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeProvider.theme.backgroundSecondary)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+}
+
+// MARK: - Agent Prompt
+
+private struct AgentPrompt: Identifiable {
+    let id = UUID()
+    let title: String
+    let prompt: String
+}
+
+// MARK: - Agent Context
+
+private enum AgentContext {
+    case workout
+    case general
+}
+
+// MARK: - Integration into FitnessView and WealthView
+
+private struct FitnessView: View {
+    // ...
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // ...
+                    
+                    // AI Workout Agent
+                    if authService.currentUser != nil {
+                        AgentPanel(
+                            title: "Workout Agent",
+                            icon: "bolt.heart",
+                            context: .workout,
+                            presets: [
+                                AgentPrompt(title: "Weekly Plan", prompt: "Design a 7-day workout plan aligned with my fitness preferences, level, available equipment, and workout duration preferences. Include rest guidance and warm-up/cool-down."),
+                                AgentPrompt(title: "Today's Session", prompt: "Create a personalized workout for today based on my recent activity and preferences. Include sets, reps, tempo, and form cues."),
+                                AgentPrompt(title: "Form Tips", prompt: "Give concise form tips and common mistakes for my top 3 preferred exercises.")
+                            ]
+                        )
+                        .environmentObject(themeProvider)
+                        .environmentObject(authService)
                         .padding(.horizontal, 20)
                     }
                     
-                    Spacer(minLength: 20)
+                    // ...
                 }
                 .padding(.bottom, 20)
             }
@@ -1224,844 +1584,35 @@ private struct FitnessView: View {
             }
         }
     }
-    
-    private var personalizedSubtitle: String {
-        guard let prefs = fitnessPrefs else { return "Ready to start your fitness journey" }
-        
-        let level = prefs.level.displayName.lowercased()
-        let frequency = prefs.workoutFrequency.displayName.lowercased()
-        
-        return "Your \(level) \(frequency) fitness plan"
-    }
-    
-    private var todaysFocus: String {
-        guard let prefs = fitnessPrefs else {
-            return "Welcome to your fitness journey! Let's start with some basic movements to build your foundation."
-        }
-        
-        let activities = prefs.preferredActivities
-        let level = prefs.level
-        
-        if activities.contains(.strength) {
-            switch level {
-            case .beginner: return "Today we're focusing on bodyweight strength fundamentals. Perfect your form with squats, push-ups, and planks."
-            case .intermediate: return "Time for progressive strength training! We'll work on compound movements with proper weight progression."
-            case .advanced: return "Advanced strength session ahead! Focus on complex movements and challenging your limits safely."
-            }
-        } else if activities.contains(.cardio) {
-            switch level {
-            case .beginner: return "Let's get your heart pumping with a gentle cardio session. Walking or light jogging to build your endurance."
-            case .intermediate: return "Interval cardio training today! Mix high and low intensity to boost your cardiovascular fitness."
-            case .advanced: return "High-intensity cardio challenge! Push your limits with advanced intervals and endurance work."
-            }
-        } else if activities.contains(.yoga) {
-            return "Find your inner balance with a mindful yoga flow. Focus on breath, flexibility, and strength through movement."
-        } else {
-            return "A balanced workout combining your favorite activities. Listen to your body and enjoy the movement!"
-        }
-    }
-}
-
-private struct StatsCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(themeProvider.theme.textPrimary)
-            
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(themeProvider.theme.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.backgroundSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.borderLight, lineWidth: 1)
-                )
-        )
-    }
-}
-
-private struct ActivityCard: View {
-    let activity: ActivityType
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: activity.icon)
-                .font(.title3)
-                .foregroundColor(themeProvider.theme.accent)
-                .frame(width: 24, height: 24)
-            
-            Text(activity.displayName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(themeProvider.theme.textPrimary)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(themeProvider.theme.accent.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(themeProvider.theme.accent.opacity(0.2), lineWidth: 1)
-                )
-        )
-    }
-}
-
-
-
-private struct BusinessView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    private var businessPrefs: BusinessPreferences? {
-        authService.currentUser?.preferences?.business
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Personalized Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            Image(systemName: "briefcase.fill")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Business Growth")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                                Text(personalizedBusinessSubtitle)
-                                    .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                    }
-                    
-                    // Business Focus Cards
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                        StatsCard(
-                            title: "Focus",
-                            value: businessPrefs?.focus.displayName ?? "Growth",
-                            icon: "target",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Work Style",
-                            value: businessPrefs?.workStyle.displayName ?? "Hybrid",
-                            icon: "location.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Weekly Hours",
-                            value: "\(businessPrefs?.weeklyHours ?? 0)h",
-                            icon: "clock.badge.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Growth Mode",
-                            value: "Active",
-                            icon: "chart.line.uptrend.xyaxis",
-                            color: themeProvider.theme.accent
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Today's Business Focus
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Today's Priority")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                            Spacer()
-                            Text("AI Recommended")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(themeProvider.theme.accent.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(todaysBusinessFocus)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .lineSpacing(2)
-                            
-                            HStack(spacing: 12) {
-                                Button {
-                                    // View insights action
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "lightbulb.fill")
-                                        Text("View Insights")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(themeProvider.theme.accent)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(themeProvider.theme.accent, lineWidth: 1.5)
-                                    )
-                                }
-                                
-                                Button {
-                                    // Take action
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "arrow.right.circle.fill")
-                                        Text("Take Action")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.backgroundSecondary)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
-                    .padding(.horizontal, 20)
-                    
-                    // Quick Actions
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Quick Actions")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                                .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                            Spacer()
-                        }
-                        
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                            QuickActionCard(
-                                title: "Network",
-                                subtitle: "Connect & grow",
-                                icon: "person.2.fill",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Learn",
-                                subtitle: "Skill development",
-                                icon: "brain.head.profile",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Strategy",
-                                subtitle: "Plan your moves",
-                                icon: "chess.piece",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Metrics",
-                                subtitle: "Track progress",
-                                icon: "chart.bar.fill",
-                                color: themeProvider.theme.accent
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer(minLength: 20)
-                }
-                .padding(.bottom, 20)
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Business")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // Open business settings
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
-                }
-            }
-        }
-    }
-    
-    private var personalizedBusinessSubtitle: String {
-        guard let prefs = businessPrefs else { return "Ready to accelerate your business growth" }
-        
-        let focus = prefs.focus.displayName.lowercased()
-        let style = prefs.workStyle.displayName.lowercased()
-        
-        return "Your \(focus)-focused \(style) strategy"
-    }
-    
-    private var todaysBusinessFocus: String {
-        guard let prefs = businessPrefs else {
-            return "Welcome to your business growth journey! Let's start by identifying your key opportunities and building momentum."
-        }
-        
-        switch prefs.focus {
-        case .productivity:
-            return "Focus on optimizing your workflows today. Identify bottlenecks and implement systems that will scale with your growth."
-        case .leadership:
-            return "Today's focus: Develop your leadership presence. Practice clear communication and decision-making that inspires your team."
-        case .entrepreneurship:
-            return "Channel your entrepreneurial energy today. Explore new opportunities, validate ideas, and take calculated risks that drive innovation."
-        case .sales:
-            return "Drive revenue growth with strategic sales activities. Focus on qualifying leads and closing deals that align with your ideal customer profile."
-        }
-    }
-}
-
-private struct QuickActionCard: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let color: Color
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        Button {
-            // Handle action
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.title3)
-                        .foregroundColor(color)
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption)
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text(subtitle)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(themeProvider.theme.backgroundSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.borderLight, lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-private struct MindsetView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    private var mindsetPrefs: MindsetPreferences? {
-        authService.currentUser?.preferences?.mindset
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Personalized Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            Image(systemName: "brain.head.profile")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Mindful Growth")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                                    .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                    
-                                Text(personalizedMindsetSubtitle)
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(themeProvider.theme.gradientTextSecondary)
-                                    .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                    }
-                    
-                    // Mindset Stats Cards
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                        StatsCard(
-                            title: "Focus Areas",
-                            value: "\(mindsetPrefs?.focuses.count ?? 0)",
-                            icon: "target",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Reflection",
-                            value: mindsetPrefs?.reflection.displayName ?? "Weekly",
-                            icon: "calendar.circle.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Growth Mode",
-                            value: "Active",
-                            icon: "chart.line.uptrend.xyaxis",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Mindfulness",
-                            value: "Daily",
-                            icon: "leaf.fill",
-                            color: themeProvider.theme.accent
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Today's Mindset Focus
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Today's Reflection")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                            Spacer()
-                            Text("Personalized")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(themeProvider.theme.accent.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(todaysMindsetFocus)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .lineSpacing(2)
-                            
-                            HStack(spacing: 12) {
-                                Button {
-                                    // Start meditation action
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "leaf.fill")
-                                        Text("Meditate")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(themeProvider.theme.accent)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(themeProvider.theme.accent, lineWidth: 1.5)
-                                    )
-                                }
-                                
-                                Button {
-                                    // Journal reflection
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "book.fill")
-                                        Text("Journal")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.backgroundSecondary)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
-                    .padding(.horizontal, 20)
-                    
-                    // Mindset Focus Areas
-                    if let focuses = mindsetPrefs?.focuses, !focuses.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Your Focus Areas")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.textPrimary)
-                                Spacer()
-                            }
-                            
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                                ForEach(focuses.prefix(4), id: \.self) { focus in
-                                    MindsetFocusCard(focus: focus)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    Spacer(minLength: 20)
-                }
-                .padding(.bottom, 20)
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Mindset")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // Open mindset settings
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
-                }
-            }
-        }
-    }
-    
-    private var personalizedMindsetSubtitle: String {
-        guard let prefs = mindsetPrefs else { return "Ready to cultivate your mindful growth" }
-        
-        let focusCount = prefs.focuses.count
-        let reflection = prefs.reflection.displayName.lowercased()
-        
-        if focusCount > 0 {
-            return "Your \(focusCount) focus areas with \(reflection) reflection"
-        } else {
-            return "Your mindful journey with \(reflection) reflection"
-        }
-    }
-    
-    private var todaysMindsetFocus: String {
-        guard let prefs = mindsetPrefs else {
-            return "Welcome to your mindset journey! Let's start with a moment of mindful awareness and intention setting."
-        }
-        
-        let focuses = prefs.focuses
-        
-        if focuses.contains(.mindfulness) {
-            return "Center yourself with mindful awareness today. Take 10 minutes to breathe deeply and observe your thoughts without judgment."
-        } else if focuses.contains(.growth) {
-            return "Focus on personal growth today. Reflect on one area where you'd like to improve and take a small step forward."
-        } else if focuses.contains(.habits) {
-            return "Focus on building positive habits today. Choose one small habit to practice consistently and observe your progress with compassion."
-        } else if focuses.contains(.resilience) {
-            return "Cultivate resilience today. Notice challenges as opportunities to grow stronger and more adaptable."
-        } else {
-            return "Take a moment for mindful reflection today. Check in with yourself and set an intention for growth and presence."
-        }
-    }
-}
-
-private struct MindsetFocusCard: View {
-    let focus: MindsetFocus
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: focus.icon)
-                .font(.title3)
-                .foregroundColor(themeProvider.theme.accent)
-                .frame(width: 24, height: 24)
-            
-            Text(focus.displayName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(themeProvider.theme.textPrimary)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(themeProvider.theme.accent.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(themeProvider.theme.accent.opacity(0.2), lineWidth: 1)
-                )
-        )
-    }
-}
-
-// Extension to add icons for mindset focus types
-private extension MindsetFocus {
-    var icon: String {
-        switch self {
-        case .mindfulness: return "leaf.fill"
-        case .growth: return "chart.line.uptrend.xyaxis"
-        case .habits: return "target"
-        case .resilience: return "shield.fill"
-        }
-    }
-}
-
-private struct CreativityView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Creative Expression")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Unlock your creative potential and imagination")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Creativity")
-        }
-    }
 }
 
 private struct WealthView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    private var wealthPrefs: WealthPreferences? {
-        authService.currentUser?.preferences?.wealth
-    }
+    // ...
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Personalized Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            Image(systemName: "dollarsign.circle.fill")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                    Text("Wealth Building")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                                    .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                    // ...
                     
-                                Text(personalizedWealthSubtitle)
-                                    .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                                    .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            }
-                            
-                            Spacer()
-                        }
+                    // AI Wealth Agent
+                    if authService.currentUser != nil {
+                        AgentPanel(
+                            title: "Wealth Agent",
+                            icon: "dollarsign.square.fill",
+                            context: .general,
+                            presets: [
+                                AgentPrompt(title: "Budget Plan", prompt: "Create a personalized monthly budget aligned with my wealth goals and preferences. Include savings targets and discretionary guidelines."),
+                                AgentPrompt(title: "Investing Next Steps", prompt: "Suggest next 3 actionable investing steps considering my risk tolerance and goals. Include simple rationale and risk notes."),
+                                AgentPrompt(title: "Optimize Expenses", prompt: "Analyze typical expense categories and propose practical ways to reduce costs without sacrificing quality of life.")
+                            ]
+                        )
+                        .environmentObject(themeProvider)
+                        .environmentObject(authService)
                         .padding(.horizontal, 20)
-                        .padding(.top, 16)
                     }
                     
-                    // Wealth Stats Cards
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                        StatsCard(
-                            title: "Goals",
-                            value: "\(wealthPrefs?.goals.count ?? 0)",
-                            icon: "target",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Risk Level",
-                            value: wealthPrefs?.risk.displayName ?? "Moderate",
-                            icon: "chart.bar.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Monthly Budget",
-                            value: "$\(wealthPrefs?.monthlyBudget ?? 0)",
-                            icon: "creditcard.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Growth Mode",
-                            value: "Active",
-                            icon: "chart.line.uptrend.xyaxis",
-                            color: themeProvider.theme.accent
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Today's Wealth Focus
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Today's Financial Focus")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            Spacer()
-                            Text("AI Optimized")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(themeProvider.theme.accent.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(todaysWealthFocus)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .lineSpacing(2)
-                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-                            
-                            HStack(spacing: 12) {
-                                Button {
-                                    // Portfolio review action
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "chart.pie.fill")
-                                        Text("Review Portfolio")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(themeProvider.theme.accent)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(themeProvider.theme.accent, lineWidth: 1.5)
-                                    )
-                                }
-                                
-                                Button {
-                                    // Investment tracker
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "plus.circle.fill")
-                                        Text("Track Investment")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.backgroundSecondary.opacity(0.9))
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
-                    .padding(.horizontal, 20)
-                    
-                    // Quick Actions
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Wealth Actions")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            Spacer()
-                        }
-                        
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                            QuickActionCard(
-                                title: "Budget Review",
-                                subtitle: "Track spending",
-                                icon: "list.bullet.clipboard",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Market Watch",
-                                subtitle: "Check trends",
-                                icon: "chart.line.uptrend.xyaxis",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Investment Ideas",
-                                subtitle: "Explore options",
-                                icon: "lightbulb.fill",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Goal Progress",
-                                subtitle: "Track milestones",
-                                icon: "flag.fill",
-                                color: themeProvider.theme.accent
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer(minLength: 20)
+                    // ...
                 }
                 .padding(.bottom, 20)
             }
@@ -2079,504 +1630,7 @@ private struct WealthView: View {
             }
         }
     }
-    
-    private var personalizedWealthSubtitle: String {
-        guard let prefs = wealthPrefs else { return "Ready to build your financial freedom" }
-        
-        let goalCount = prefs.goals.count
-        let risk = prefs.risk.displayName.lowercased()
-        
-        if goalCount > 0 {
-            return "Your \(goalCount) wealth goals with \(risk) risk approach"
-        } else {
-            return "Your \(risk) risk wealth building journey"
-        }
-    }
-    
-    private var todaysWealthFocus: String {
-        guard let prefs = wealthPrefs else {
-            return "Welcome to your wealth building journey! Let's start by setting clear financial goals and building healthy money habits."
-        }
-        
-        let goals = prefs.goals
-        let risk = prefs.risk
-        
-        if goals.contains(.saving) {
-            return "Focus on building your savings today. Aim to save consistently and watch your financial security grow over time."
-        } else if goals.contains(.investing) {
-            switch risk {
-            case .low: return "Consider low-risk investment options today. Explore index funds and bonds that align with your conservative approach."
-            case .moderate: return "Balance your portfolio today. Mix growth investments with stable assets for optimal risk-adjusted returns."
-            case .high: return "Explore growth opportunities today. Research emerging markets and growth stocks that match your risk tolerance."
-            }
-        } else if goals.contains(.debtFree) {
-            return "Tackle your debt strategically today. Focus on high-interest debt first and consider debt consolidation options."
-        } else if goals.contains(.income) {
-            return "Focus on increasing your income streams today. Explore opportunities to enhance your skills or create additional revenue sources."
-        } else {
-            return "Set your wealth foundation today. Define your financial goals and start tracking your income and expenses."
-        }
-    }
 }
-
-private struct RelationshipsView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Meaningful Connections")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Build deeper, more authentic relationships")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Relationships")
-        }
-    }
-}
-
-private struct LearningView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Continuous Learning")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Expand your knowledge and skills")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Learning")
-        }
-    }
-}
-
-private struct SpiritualityView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Spiritual Journey")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Connect with your inner wisdom and purpose")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Spirituality")
-        }
-    }
-}
-
-private struct AdventureView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Adventure Awaits")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Embrace new experiences and challenges")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Adventure")
-        }
-    }
-}
-
-private struct LeadershipView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    @EnvironmentObject var authService: AuthenticationService
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Personalized Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            Image(systemName: "crown.fill")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                    Text("Leadership Excellence")
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                                    .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                    
-                                Text("Develop authentic influence and impact")
-                                    .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                                    .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                    }
-                    
-                    // Leadership Stats Cards
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                        StatsCard(
-                            title: "Leadership Style",
-                            value: "Authentic",
-                            icon: "person.2.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Focus Area",
-                            value: "Growth",
-                            icon: "chart.line.uptrend.xyaxis",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Team Impact",
-                            value: "High",
-                            icon: "star.fill",
-                            color: themeProvider.theme.accent
-                        )
-                        
-                        StatsCard(
-                            title: "Development",
-                            value: "Active",
-                            icon: "brain.head.profile",
-                            color: themeProvider.theme.accent
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Today's Leadership Focus
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Today's Leadership Challenge")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            Spacer()
-                            Text("Growth Focused")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(themeProvider.theme.accent.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Practice empathetic leadership today. Listen actively to three team members and understand their perspectives before making decisions.")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                                .lineSpacing(2)
-                                .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-                            
-                            HStack(spacing: 12) {
-                                Button {
-                                    // Team check-in action
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "person.2.fill")
-                                        Text("Team Check-in")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(themeProvider.theme.accent)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(themeProvider.theme.accent, lineWidth: 1.5)
-                                    )
-                                }
-                                
-                                Button {
-                                    // Feedback session
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "message.fill")
-                                        Text("Give Feedback")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(themeProvider.theme.backgroundSecondary.opacity(0.9))
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
-                    .padding(.horizontal, 20)
-                    
-                    // Leadership Actions
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Leadership Actions")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                            Spacer()
-                        }
-                        
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                            QuickActionCard(
-                                title: "Vision Setting",
-                                subtitle: "Define direction",
-                                icon: "eye.fill",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Team Building",
-                                subtitle: "Strengthen bonds",
-                                icon: "person.3.fill",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Decision Making",
-                                subtitle: "Lead with clarity",
-                                icon: "arrow.triangle.branch",
-                                color: themeProvider.theme.accent
-                            )
-                            
-                            QuickActionCard(
-                                title: "Mentoring",
-                                subtitle: "Develop others",
-                                icon: "hand.raised.fill",
-                                color: themeProvider.theme.accent
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer(minLength: 20)
-                }
-                .padding(.bottom, 20)
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Leadership")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        // Open leadership settings
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct HealthView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Holistic Health")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                        .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                    
-                    Text("Optimize your physical and mental wellbeing")
-                        .foregroundColor(themeProvider.theme.gradientTextSecondary)
-                        .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Health")
-        }
-    }
-}
-
-private struct FamilyView: View {
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("Family Harmony")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(themeProvider.theme.textPrimary)
-                    
-                    Text("Strengthen bonds with those you love most")
-                        .foregroundColor(themeProvider.theme.textSecondary)
-                }
-                .padding()
-            }
-            .background(ThemedBackground().environmentObject(themeProvider))
-            .navigationTitle("Family")
-        }
-    }
-}
-
-// MARK: - Feed Card + Shimmer
-
-private struct EnhancedFeedCard: View {
-    let item: FeedItem
-    @EnvironmentObject var themeProvider: ThemeProvider
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Image section
-            AsyncImage(url: URL(string: item.imageUrl ?? "")) { phase in
-                switch phase {
-                case .empty:
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.backgroundTertiary)
-                        .frame(height: 200)
-                        .shimmer()
-                case .success(let img):
-                    img
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 200)
-                        .clipped()
-                        .overlay(
-                            // Gradient overlay for better text readability
-                            LinearGradient(
-                                colors: [Color.clear, Color.black.opacity(0.3)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                case .failure:
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.backgroundTertiary)
-                        .frame(height: 200)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .foregroundColor(themeProvider.theme.textSecondary)
-                                .font(.title)
-                        )
-                @unknown default:
-                    EmptyView()
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            
-            // Content section
-            VStack(alignment: .leading, spacing: 12) {
-                if let title = item.title {
-                    Text(title)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Color(red: 26/255, green: 32/255, blue: 46/255)) // High contrast dark
-                        .lineLimit(2)
-                }
-                
-                Text(item.text)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(Color(red: 71/255, green: 85/255, blue: 105/255)) // Medium contrast
-                    .lineLimit(3)
-                    .lineSpacing(2)
-                
-                // Tags and action
-                HStack {
-                    // Tags
-                    HStack(spacing: 6) {
-                        ForEach(item.topicTags.prefix(2), id: \.self) { tag in
-                            Text(tag.capitalized)
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(themeProvider.theme.accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(themeProvider.theme.accent.opacity(0.1))
-                                )
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Action button
-                    Button {
-                        // Handle feed item action
-                    } label: {
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
-                }
-            }
-            .padding(16)
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(themeProvider.theme.backgroundSecondary)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-        )
-    }
-}
-
-private struct FeedCard: View {
-    let item: FeedItem
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AsyncImage(url: URL(string: item.imageUrl ?? "")) { phase in
-                switch phase {
-                case .empty:
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.backgroundTertiary)
-                        .frame(height: 220)
-                        .shimmer()
-                case .success(let img):
-                    img
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 220)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                case .failure:
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.backgroundTertiary)
-                        .frame(height: 220)
-                @unknown default:
                     EmptyView()
                 }
             }
