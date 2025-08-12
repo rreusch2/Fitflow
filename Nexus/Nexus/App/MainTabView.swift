@@ -16,14 +16,15 @@ struct MainTabView: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     
     @State private var selectedTab: Int = 0
-    @State private var showCoach: Bool = false
+    @State private var showCoach = false
+    @State private var coachButtonPosition = CGPoint(x: UIScreen.main.bounds.width - 72, y: UIScreen.main.bounds.height - 160)
     
     private var userInterests: [UserInterest] {
         authService.currentUser?.preferences?.theme.selectedInterests ?? []
     }
     
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             TabView(selection: $selectedTab) {
             // Always show the main feed
             PersonalizedFeedView()
@@ -58,14 +59,15 @@ struct MainTabView: View {
             .tint(themeProvider.theme.accent)
             .background(ThemedBackground().environmentObject(themeProvider))
 
-            // Floating Coach Button
-            FloatingCoachButton(color: themeProvider.theme.accent) {
+            // Floating Coach Button - positioned above nav bar
+            DraggableSpinningCoachButton(
+                position: $coachButtonPosition,
+                color: themeProvider.theme.accent
+            ) {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     showCoach.toggle()
                 }
             }
-            .padding(.trailing, 16)
-            .padding(.bottom, 20)
 
             // Coach Overlay
             if showCoach {
@@ -346,30 +348,72 @@ private struct PersonalizedFeedView: View {
 
 // MARK: - Global Floating Coach Components
 
-private struct FloatingCoachButton: View {
+private struct DraggableSpinningCoachButton: View {
+    @Binding var position: CGPoint
     let color: Color
     let action: () -> Void
+    
     @State private var animate = false
+    @State private var rotation: Double = 0
+    @State private var isDragging = false
+    @State private var dragOffset = CGSize.zero
     
     var body: some View {
         Button(action: action) {
             ZStack {
+                // Outer glow circle
                 Circle()
                     .fill(color.opacity(0.15))
                     .frame(width: 62, height: 62)
                     .scaleEffect(animate ? 1.08 : 1.0)
                     .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: animate)
+                
+                // Main button circle
                 Circle()
                     .fill(color)
                     .frame(width: 56, height: 56)
-                Image(systemName: "message.fill")
+                
+                // Your logo icon - constantly spinning!
+                Image(systemName: "brain.head.profile")
                     .foregroundColor(.white)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 24, weight: .light))
+                    .rotationEffect(.degrees(rotation))
+                    .animation(.linear(duration: 3.0).repeatForever(autoreverses: false), value: rotation)
             }
             .shadow(color: color.opacity(0.35), radius: 10, x: 0, y: 6)
+            .scaleEffect(isDragging ? 1.1 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isDragging)
         }
-        .onAppear { animate = true }
-        .accessibilityLabel("Open Coach")
+        .position(x: position.x + dragOffset.width, y: position.y + dragOffset.height)
+        .onAppear {
+            animate = true
+            rotation = 360 // Start the constant spinning
+        }
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    if !isDragging {
+                        isDragging = true
+                    }
+                    dragOffset = value.translation
+                }
+                .onEnded { value in
+                    isDragging = false
+                    
+                    // Update final position and reset offset
+                    let newX = position.x + value.translation.x
+                    let newY = position.y + value.translation.y
+                    
+                    // Keep within screen bounds with padding
+                    let screenBounds = UIScreen.main.bounds
+                    let constrainedX = max(40, min(screenBounds.width - 40, newX))
+                    let constrainedY = max(100, min(screenBounds.height - 180, newY)) // Above nav bar
+                    
+                    position = CGPoint(x: constrainedX, y: constrainedY)
+                    dragOffset = .zero
+                }
+        )
+        .accessibilityLabel("Draggable Coach - Hold to move around")
     }
 }
 
