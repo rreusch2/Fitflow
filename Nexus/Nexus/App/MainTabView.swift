@@ -57,8 +57,42 @@ struct MainTabView: View {
         .background(ThemedBackground().environmentObject(themeProvider))
     }
     
-    // Revolutionary intelligent tab system - prioritizes and limits tabs for optimal UX
+    // Revolutionary intelligent tab system - respects user's custom tab management preferences
     private var dynamicTabs: [(title: String, icon: String, view: AnyView)] {
+        // Check if user has custom tab management preferences
+        if let tabVisibility = authService.currentUser?.preferences?.theme.tabVisibility {
+            return getCustomizedTabs(from: tabVisibility)
+        } else {
+            // Fallback to intelligent default prioritization
+            return getDefaultPrioritizedTabs()
+        }
+    }
+    
+    private func getCustomizedTabs(from tabVisibility: TabVisibilityPreferences) -> [(title: String, icon: String, view: AnyView)] {
+        // Define all possible tabs
+        let allPossibleTabs: [UserInterest: (title: String, icon: String, view: AnyView)] = [
+            .fitness: ("Fitness", "figure.run", AnyView(FitnessView())),
+            .business: ("Business", "briefcase.fill", AnyView(BusinessView())),
+            .mindset: ("Mindset", "brain.head.profile", AnyView(MindsetView())),
+            .creativity: ("Create", "paintbrush.fill", AnyView(CreativityView())),
+            .wealth: ("Wealth", "dollarsign.circle.fill", AnyView(WealthView())),
+            .relationships: ("Connect", "heart.fill", AnyView(RelationshipsView())),
+            .learning: ("Learn", "book.fill", AnyView(LearningView())),
+            .spirituality: ("Spirit", "leaf.fill", AnyView(SpiritualityView())),
+            .adventure: ("Adventure", "mountain.2.fill", AnyView(AdventureView())),
+            .leadership: ("Lead", "crown.fill", AnyView(LeadershipView())),
+            .health: ("Health", "mind.head.profile", AnyView(HealthView())),
+            .family: ("Family", "house.fill", AnyView(FamilyView()))
+        ]
+        
+        // Return tabs in user's preferred order and selection
+        return tabVisibility.visibleTabs.compactMap { interest in
+            guard let tab = allPossibleTabs[interest] else { return nil }
+            return (title: tab.title, icon: tab.icon, view: tab.view)
+        }
+    }
+    
+    private func getDefaultPrioritizedTabs() -> [(title: String, icon: String, view: AnyView)] {
         let maxTabs = 4 // Perfect for navigation without overcrowding
         
         // Define all possible tabs with priority weights
@@ -748,6 +782,57 @@ private struct ProfileView: View {
                     } else {
                         Text("Complete onboarding to set your interests")
                             .foregroundColor(themeProvider.theme.textSecondary)
+                    }
+                }
+                
+                // Revolutionary Tab Customization Section
+                Section(header: Text("Navigation").foregroundStyle(themeProvider.theme.gradientTextSecondary)) {
+                    NavigationLink {
+                        TabManagementView()
+                            .environmentObject(authService)
+                            .environmentObject(themeProvider)
+                    } label: {
+                        HStack {
+                            Image(systemName: "square.grid.2x2")
+                                .foregroundColor(themeProvider.theme.accent)
+                                .frame(width: 20)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Tab Management")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                
+                                Text("Customize your tab bar experience")
+                                    .font(.caption)
+                                    .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // Show current tab count
+                            if let tabVisibility = authService.currentUser?.preferences?.theme.tabVisibility {
+                                Text("\(tabVisibility.visibleTabs.count + 2)") // +2 for fixed tabs
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(themeProvider.theme.accent)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(themeProvider.theme.accent.opacity(0.1))
+                                    )
+                            } else {
+                                Text("Auto")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(themeProvider.theme.textSecondary)
+                            }
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(themeProvider.theme.textSecondary)
+                                .font(.caption)
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
                 

@@ -90,10 +90,101 @@ struct ThemePreferences: Codable {
     let style: ThemeStyle
     let accent: AccentColorChoice
     let selectedInterests: [UserInterest] // Store user's core interests for theme adaptation
+    let tabVisibility: TabVisibilityPreferences? // User's custom tab management settings
     
     enum CodingKeys: String, CodingKey {
         case style, accent
         case selectedInterests = "selected_interests"
+        case tabVisibility = "tab_visibility"
+    }
+}
+
+// MARK: - Revolutionary Tab Management
+struct TabVisibilityPreferences: Codable {
+    let visibleTabs: [UserInterest] // Which interest tabs to show
+    let tabOrder: [TabType] // Custom order for all tabs
+    let maxVisibleTabs: Int // User's preference for max tabs (3-5)
+    
+    enum CodingKeys: String, CodingKey {
+        case visibleTabs = "visible_tabs"
+        case tabOrder = "tab_order"  
+        case maxVisibleTabs = "max_visible_tabs"
+    }
+}
+
+enum TabType: String, Codable, CaseIterable {
+    case flow = "flow"
+    case fitness = "fitness"
+    case business = "business"
+    case mindset = "mindset"
+    case creativity = "creativity"
+    case wealth = "wealth"
+    case relationships = "relationships"
+    case learning = "learning"
+    case spirituality = "spirituality"
+    case adventure = "adventure"
+    case leadership = "leadership"
+    case health = "health"
+    case family = "family"
+    case coach = "coach"
+    case profile = "profile"
+    
+    var displayName: String {
+        switch self {
+        case .flow: return "Flow"
+        case .fitness: return "Fitness"
+        case .business: return "Business"
+        case .mindset: return "Mindset"
+        case .creativity: return "Create"
+        case .wealth: return "Wealth"
+        case .relationships: return "Connect"
+        case .learning: return "Learn"
+        case .spirituality: return "Spirit"
+        case .adventure: return "Adventure"
+        case .leadership: return "Lead"
+        case .health: return "Health"
+        case .family: return "Family"
+        case .coach: return "Coach"
+        case .profile: return "Profile"
+        }
+    }
+    
+    var systemImage: String {
+        switch self {
+        case .flow: return "brain.head.profile"
+        case .fitness: return "figure.run"
+        case .business: return "briefcase.fill"
+        case .mindset: return "brain.head.profile"
+        case .creativity: return "paintbrush.fill"
+        case .wealth: return "dollarsign.circle.fill"
+        case .relationships: return "heart.fill"
+        case .learning: return "book.fill"
+        case .spirituality: return "leaf.fill"
+        case .adventure: return "mountain.2.fill"
+        case .leadership: return "crown.fill"
+        case .health: return "mind.head.profile"
+        case .family: return "house.fill"
+        case .coach: return "message.fill"
+        case .profile: return "person.fill"
+        }
+    }
+    
+    var userInterest: UserInterest? {
+        switch self {
+        case .fitness: return .fitness
+        case .business: return .business
+        case .mindset: return .mindset
+        case .creativity: return .creativity
+        case .wealth: return .wealth
+        case .relationships: return .relationships
+        case .learning: return .learning
+        case .spirituality: return .spirituality
+        case .adventure: return .adventure
+        case .leadership: return .leadership
+        case .health: return .health
+        case .family: return .family
+        case .flow, .coach, .profile: return nil
+        }
     }
 }
 
