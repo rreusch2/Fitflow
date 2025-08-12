@@ -1,6 +1,6 @@
 //
 //  UserModels.swift
-//  NexusGPT
+//  Flowmate
 //
 //  Created on 2025-01-13
 //
@@ -73,14 +73,27 @@ struct UserPreferences: Codable {
     let mindset: MindsetPreferences?
     let wealth: WealthPreferences?
     let relationships: RelationshipPreferences?
+    let theme: ThemePreferences // Revolutionary theme personalization
     let goals: [Goal]
     let createdAt: Date
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
-        case fitness, nutrition, motivation, business, creativity, mindset, wealth, relationships, goals
+        case fitness, nutrition, motivation, business, creativity, mindset, wealth, relationships, theme, goals
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - Revolutionary Theme Preferences
+struct ThemePreferences: Codable {
+    let style: ThemeStyle
+    let accent: AccentColorChoice
+    let selectedInterests: [UserInterest] // Store user's core interests for theme adaptation
+    
+    enum CodingKeys: String, CodingKey {
+        case style, accent
+        case selectedInterests = "selected_interests"
     }
 }
 

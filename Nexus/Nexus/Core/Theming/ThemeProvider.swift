@@ -113,73 +113,73 @@ final class ThemeProvider: ObservableObject {
         switch style {
         case .energetic:
             return Theme(
-                backgroundPrimary: .backgroundPrimary,
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 255/255, green: 251/255, blue: 250/255), // Energetic warm white
+                backgroundSecondary: Color(red: 254/255, green: 246/255, blue: 243/255), // Soft coral tint
+                textPrimary: Color(red: 68/255, green: 28/255, blue: 35/255), // Deep energetic red
+                textSecondary: Color(red: 147/255, green: 51/255, blue: 66/255), // Energetic rose
                 accent: accentColor,
                 emphasis: .primaryCoral
             )
         case .professional:
             return Theme(
-                backgroundPrimary: .backgroundPrimary,
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 249/255, green: 250/255, blue: 252/255), // Cool light gray
+                backgroundSecondary: Color.white, // Pure white
+                textPrimary: Color(red: 31/255, green: 41/255, blue: 55/255), // Professional dark blue
+                textSecondary: Color(red: 100/255, green: 116/255, blue: 139/255), // Professional gray
                 accent: accentColor,
                 emphasis: .deepOcean
             )
         case .mindful:
             return Theme(
-                backgroundPrimary: .backgroundPrimary,
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 249/255, green: 250/255, blue: 248/255), // Zen warm white
+                backgroundSecondary: Color(red: 244/255, green: 246/255, blue: 243/255), // Soft sage tint
+                textPrimary: Color(red: 45/255, green: 55/255, blue: 44/255), // Deep forest green
+                textSecondary: Color(red: 93/255, green: 108/255, blue: 91/255), // Mindful sage
                 accent: accentColor,
                 emphasis: .mindsetRose
             )
         case .creative:
             return Theme(
-                backgroundPrimary: .backgroundPrimary,
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 253/255, green: 249/255, blue: 252/255), // Soft pink-white
+                backgroundSecondary: Color(red: 247/255, green: 242/255, blue: 250/255), // Creative lavender
+                textPrimary: Color(red: 61/255, green: 39/255, blue: 91/255), // Deep creative purple
+                textSecondary: Color(red: 123/255, green: 97/255, blue: 158/255), // Medium purple
                 accent: accentColor,
                 emphasis: .creativePink
             )
         case .balanced:
             return Theme(
-                backgroundPrimary: .backgroundPrimary,
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 250/255, green: 248/255, blue: 246/255), // Warm neutral
+                backgroundSecondary: Color(red: 245/255, green: 243/255, blue: 240/255), // Balanced beige
+                textPrimary: Color(red: 52/255, green: 48/255, blue: 42/255), // Warm dark brown
+                textSecondary: Color(red: 107/255, green: 99/255, blue: 92/255), // Warm gray
                 accent: accentColor,
                 emphasis: .warmGold
             )
         case .calm:
             return Theme(
-                backgroundPrimary: Color(red: 248/255, green: 250/255, blue: 252/255),
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 247/255, green: 251/255, blue: 254/255), // Soft blue-white
+                backgroundSecondary: Color(red: 241/255, green: 248/255, blue: 252/255), // Calm sky blue
+                textPrimary: Color(red: 30/255, green: 58/255, blue: 75/255), // Deep calm blue
+                textSecondary: Color(red: 71/255, green: 109/255, blue: 130/255), // Soft blue-gray
                 accent: accentColor.opacity(0.9),
                 emphasis: Color(red: 94/255, green: 234/255, blue: 212/255)
             )
         case .minimal:
             return Theme(
-                backgroundPrimary: .white,
-                backgroundSecondary: .backgroundPrimary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color.white, // Pure white
+                backgroundSecondary: Color(red: 249/255, green: 249/255, blue: 249/255), // Ultra-light gray
+                textPrimary: Color(red: 17/255, green: 17/255, blue: 17/255), // Near black
+                textSecondary: Color(red: 115/255, green: 115/255, blue: 115/255), // Clean gray
                 accent: accentColor,
-                emphasis: .borderMedium
+                emphasis: Color(red: 200/255, green: 200/255, blue: 200/255) // Clean border
             )
         case .playful:
             return Theme(
-                backgroundPrimary: Color(red: 254/255, green: 252/255, blue: 232/255),
-                backgroundSecondary: .backgroundSecondary,
-                textPrimary: .textPrimary,
-                textSecondary: .textSecondary,
+                backgroundPrimary: Color(red: 254/255, green: 252/255, blue: 232/255), // Warm cream
+                backgroundSecondary: Color(red: 255/255, green: 248/255, blue: 220/255), // Light golden
+                textPrimary: Color(red: 133/255, green: 77/255, blue: 14/255), // Warm brown
+                textSecondary: Color(red: 180/255, green: 130/255, blue: 70/255), // Golden brown
                 accent: accentColor,
                 emphasis: .motivationalOrangeLight
             )

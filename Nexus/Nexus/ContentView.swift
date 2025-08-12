@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  NexusGPT
+//  Flowmate
 //
 //  Created on 2025-01-13
 //

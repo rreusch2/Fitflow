@@ -1,6 +1,6 @@
 //
 //  OnboardingContainerView.swift
-//  NexusGPT
+//  Flowmate
 //
 //  Created on 2025-01-13
 //
@@ -349,6 +349,13 @@ struct OnboardingContainerView: View {
         let wealthPrefs: WealthPreferences? = selectedInterests.contains(.wealth) ? WealthPreferences(goals: Array(wealthGoals), risk: riskTolerance, monthlyBudget: monthlyBudget) : nil
         let relationshipsPrefs: RelationshipPreferences? = selectedInterests.contains(.relationships) ? RelationshipPreferences(focuses: Array(relationshipFocuses), weeklySocialHours: weeklySocialHours) : nil
         
+        // Revolutionary theme persistence for complete personalization
+        let themePrefs = ThemePreferences(
+            style: selectedStyle,
+            accent: selectedAccent,
+            selectedInterests: Array(selectedInterests)
+        )
+        
         let userPreferences = UserPreferences(
             fitness: fitnessPrefs,
             nutrition: nutritionPrefs,
@@ -358,10 +365,14 @@ struct OnboardingContainerView: View {
             mindset: mindsetPrefs,
             wealth: wealthPrefs,
             relationships: relationshipsPrefs,
+            theme: themePrefs,
             goals: [],
             createdAt: Date(),
             updatedAt: Date()
         )
+        
+        // Apply the selected theme immediately
+        themeProvider.setTheme(style: selectedStyle, accent: selectedAccent)
         Task { await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil) }
     }
 }
@@ -499,7 +510,7 @@ private struct WelcomeSlide: View {
             }
             
             VStack(spacing: 12) {
-                Text("Welcome to NexusGPT")
+                Text("Welcome to Flowmate")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(themeProvider.theme.textPrimary)
                     .multilineTextAlignment(.center)
@@ -566,26 +577,33 @@ private struct InterestsSlide: View {
             }
             
             ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                // Beautiful flowing grid with consistent sizing
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ], 
+                    spacing: 16
+                ) {
                     ForEach(UserInterest.allCases, id: \.self) { interest in
                         InterestCard(
                             interest: interest,
                             isSelected: selectedInterests.contains(interest),
                             themeProvider: themeProvider
                         ) {
-                            if selectedInterests.contains(interest) {
-                                selectedInterests.remove(interest)
-                            } else {
-                                selectedInterests.insert(interest)
+                            withAnimation(.bouncy) {
+                                if selectedInterests.contains(interest) {
+                                    selectedInterests.remove(interest)
+                                } else {
+                                    selectedInterests.insert(interest)
+                                }
                             }
+                            HapticFeedback.light()
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .glassCard(cornerRadius: CornerRadius.xl)
-                .padding(.horizontal, 20)
-                .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: selectedInterests)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
             }
             
             Spacer()
@@ -602,39 +620,89 @@ private struct InterestCard: View {
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
+                // Beautiful icon with dynamic sizing
                 ZStack {
                     Circle()
-                        .fill(isSelected ? themeProvider.theme.accent : themeProvider.theme.accent.opacity(0.1))
-                        .frame(width: 60, height: 60)
+                        .fill(
+                            LinearGradient(
+                                colors: isSelected ? 
+                                    [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)] :
+                                    [themeProvider.theme.accent.opacity(0.15), themeProvider.theme.accent.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                        .shadow(
+                            color: isSelected ? themeProvider.theme.accent.opacity(0.3) : .clear,
+                            radius: 8,
+                            x: 0,
+                            y: 4
+                        )
                     
                     Image(systemName: interest.icon)
-                        .font(.system(size: 24, weight: .medium))
+                        .font(.system(size: 22, weight: .medium))
                         .foregroundColor(isSelected ? .white : themeProvider.theme.accent)
+                        .scaleEffect(isSelected ? 1.1 : 1.0)
+                        .animation(.bouncy, value: isSelected)
                 }
                 
-                VStack(spacing: 4) {
+                // Consistent text layout
+                VStack(spacing: 6) {
                     Text(interest.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(themeProvider.theme.textPrimary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     
                     Text(interest.subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(themeProvider.theme.textSecondary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxHeight: 60, alignment: .top)
             }
-            .padding(.vertical, 16)
-            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .frame(height: 140) // Consistent height for all cards
+            .padding(.horizontal, 14)
+            .padding(.vertical, 18)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? themeProvider.theme.accent.opacity(0.1) : themeProvider.theme.backgroundSecondary)
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: isSelected ?
+                                [themeProvider.theme.accent.opacity(0.1), themeProvider.theme.accent.opacity(0.05)] :
+                                [themeProvider.theme.backgroundSecondary, Color.white],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(isSelected ? themeProvider.theme.accent : .borderMedium, lineWidth: isSelected ? 2 : 1)
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(
+                                LinearGradient(
+                                    colors: isSelected ?
+                                        [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.6)] :
+                                        [Color.borderMedium, Color.borderLight],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: isSelected ? 2.5 : 1
+                            )
+                    )
+                    .shadow(
+                        color: isSelected ? themeProvider.theme.accent.opacity(0.2) : Color.black.opacity(0.05),
+                        radius: isSelected ? 12 : 4,
+                        x: 0,
+                        y: isSelected ? 6 : 2
                     )
             )
+            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .animation(.bouncy, value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -828,7 +896,7 @@ private struct MotivationSlide: View {
     }
 }
 
-// MARK: - Theme Style Slide
+// MARK: - Revolutionary Theme Style Selection
 private struct ThemeStyleSlide: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @Binding var style: ThemeStyle
@@ -836,77 +904,399 @@ private struct ThemeStyleSlide: View {
     var onContinue: () -> Void = {}
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Preview card reflects selected style/accent via ThemeProvider
+        VStack(spacing: 24) {
+            // Beautiful header
             VStack(spacing: 12) {
                 HStack {
-                    Image(systemName: "sparkles")
-                    Text("Preview")
-                        .font(.headline)
+                    Image(systemName: "paintpalette.fill")
+                        .foregroundStyle(themeProvider.theme.accent)
+                        .font(.title2)
+                    Text("Choose Your Flowmate Style")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(themeProvider.theme.textPrimary)
                     Spacer()
                 }
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(themeProvider.theme.backgroundPrimary)
-                    .frame(height: 140)
+                
+                Text("Pick a visual style that matches your energy and personality")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            
+            // Enhanced Preview Card
+            VStack(spacing: 16) {
+                HStack {
+                    Image(systemName: "eye.fill")
+                        .foregroundStyle(themeProvider.theme.accent)
+                        .font(.title3)
+                    Text("Live Preview")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Spacer()
+                }
+                
+                // Beautiful preview card with actual Flowmate content
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [themeProvider.theme.backgroundPrimary, themeProvider.theme.backgroundSecondary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 160)
                     .overlay(
-                        VStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Circle().fill(themeProvider.theme.accent).frame(width: 10, height: 10)
-                                Text("Accent")
-                                    .foregroundColor(themeProvider.theme.textPrimary)
+                                Circle()
+                                    .fill(themeProvider.theme.accent)
+                                    .frame(width: 12, height: 12)
+                                Text("Accent Color")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(themeProvider.theme.accent)
                                 Spacer()
                             }
-                            HStack {
-                                Text("Title example")
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Good morning! Ready to flow?")
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(themeProvider.theme.textPrimary)
-                                    .font(.headline)
-                                Spacer()
-                            }
-                            HStack {
-                                Text("Body example with secondary text")
+                                
+                                Text("Your Flowmate is here to guide you through an amazing day of growth and achievement.")
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(themeProvider.theme.textSecondary)
+                                    .lineLimit(2)
+                            }
+                            
+                            HStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(themeProvider.theme.accent.opacity(0.2))
+                                    .frame(width: 60, height: 24)
+                                    .overlay(
+                                        Text("Action")
+                                            .font(.caption)
+                                            .foregroundColor(themeProvider.theme.accent)
+                                    )
                                 Spacer()
                             }
                         }
-                        .padding()
+                        .padding(20)
+                    )
+                    .shadow(
+                        color: themeProvider.theme.accent.opacity(0.15),
+                        radius: 12,
+                        x: 0,
+                        y: 6
                     )
             }
-            .glassCard()
-            .overlay(alignment: .topLeading) {
-                Image(systemName: "paintpalette.fill")
-                    .foregroundStyle(themeProvider.theme.accent)
-                    .padding(.leading, 24)
-            }
-            .tipBanner(icon: "lightbulb", text: "Preview themes. You can tweak this anytime in Profile > Theme.")
+            .padding(.horizontal, 24)
             
-            // Pickers
-            Form {
-                Picker("Style", selection: $style) {
-                    ForEach(ThemeStyle.allCases, id: \.self) { s in
-                        Text(String(describing: s).capitalized).tag(s)
+            // Style Selection Grid
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Visual Styles")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Spacer()
+                }
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                    ForEach(ThemeStyle.allCases, id: \.self) { themeStyle in
+                        StyleCard(
+                            style: themeStyle,
+                            isSelected: style == themeStyle,
+                            themeProvider: themeProvider
+                        ) {
+                            withAnimation(.bouncy) {
+                                style = themeStyle
+                                themeProvider.setTheme(style: themeStyle, accent: accent)
+                            }
+                            HapticFeedback.light()
+                        }
                     }
                 }
-                Picker("Accent", selection: $accent) {
-                    ForEach(AccentColorChoice.allCases, id: \.self) { a in
-                        Text(String(describing: a).capitalized).tag(a)
+            }
+            .padding(.horizontal, 24)
+            
+            // Accent Color Selection
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Accent Colors")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Spacer()
+                }
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(AccentColorChoice.allCases, id: \.self) { accentColor in
+                            AccentColorCard(
+                                accent: accentColor,
+                                isSelected: accent == accentColor,
+                                themeProvider: themeProvider
+                            ) {
+                                withAnimation(.bouncy) {
+                                    accent = accentColor
+                                    themeProvider.setTheme(style: style, accent: accentColor)
+                                }
+                                HapticFeedback.light()
+                            }
+                        }
                     }
+                    .padding(.horizontal, 24)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .listStyle(.insetGrouped)
-            .tint(themeProvider.theme.accent)
             
-            Button("Continue") { onContinue() }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.horizontal)
+            // Subtle tip without blocking preview
+            HStack {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(themeProvider.theme.accent.opacity(0.7))
+                    .font(.caption)
+                Text("You can change these anytime in Settings")
+                    .font(.caption)
+                    .foregroundColor(themeProvider.theme.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            
+            Spacer()
         }
         .onChange(of: style) { _, new in
             themeProvider.setTheme(style: new, accent: accent)
         }
         .onChange(of: accent) { _, new in
             themeProvider.setTheme(style: style, accent: new)
+        }
+    }
+}
+
+// MARK: - Beautiful Style Selection Cards
+struct StyleCard: View {
+    let style: ThemeStyle
+    let isSelected: Bool
+    let themeProvider: ThemeProvider
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 10) {
+                // Dynamic visual representation of the style
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(styleGradient)
+                        .frame(height: 60)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(
+                                    isSelected ? themeProvider.theme.accent : Color.borderLight,
+                                    lineWidth: isSelected ? 2.5 : 1
+                                )
+                        )
+                    
+                    // Style-specific visual elements
+                    HStack(spacing: 6) {
+                        ForEach(0..<3, id: \.self) { index in
+                            Circle()
+                                .fill(themeProvider.theme.accent.opacity(0.7 - Double(index) * 0.2))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                }
+                
+                VStack(spacing: 4) {
+                    Text(style.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                    
+                    Text(style.description)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        isSelected ?
+                            themeProvider.theme.accent.opacity(0.1) :
+                            themeProvider.theme.backgroundSecondary
+                    )
+                    .shadow(
+                        color: isSelected ? themeProvider.theme.accent.opacity(0.2) : Color.black.opacity(0.05),
+                        radius: isSelected ? 8 : 2,
+                        x: 0,
+                        y: isSelected ? 4 : 1
+                    )
+            )
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.bouncy, value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var styleGradient: LinearGradient {
+        switch style {
+        case .energetic:
+            return LinearGradient(
+                colors: [Color.primaryCoral, Color.warmGold],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .professional:
+            return LinearGradient(
+                colors: [Color.deepOcean, Color.businessBlue],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .mindful:
+            return LinearGradient(
+                colors: [Color.mindsetLavender, Color.mindsetRose],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .creative:
+            return LinearGradient(
+                colors: [Color.creativePink, Color.creativeViolet],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .balanced:
+            return LinearGradient(
+                colors: [Color.warmGold, Color.primaryCoral.opacity(0.7)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .calm:
+            return LinearGradient(
+                colors: [Color.mindsetLavender.opacity(0.6), Color.deepOcean.opacity(0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .minimal:
+            return LinearGradient(
+                colors: [Color.borderMedium, Color.backgroundSecondary],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .playful:
+            return LinearGradient(
+                colors: [Color.motivationalOrangeLight, Color.fitnessGreen.opacity(0.7)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+}
+
+struct AccentColorCard: View {
+    let accent: AccentColorChoice
+    let isSelected: Bool
+    let themeProvider: ThemeProvider
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                // Beautiful color preview
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [accentColor, accentColor.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: isSelected ? 56 : 48, height: isSelected ? 56 : 48)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                Color.white,
+                                lineWidth: isSelected ? 3 : 0
+                            )
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                themeProvider.theme.accent.opacity(0.3),
+                                lineWidth: isSelected ? 2 : 0
+                            )
+                            .scaleEffect(1.2)
+                    )
+                    .shadow(
+                        color: accentColor.opacity(0.4),
+                        radius: isSelected ? 8 : 4,
+                        x: 0,
+                        y: isSelected ? 4 : 2
+                    )
+                
+                Text(accent.displayName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .lineLimit(1)
+            }
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.bouncy, value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var accentColor: Color {
+        switch accent {
+        case .coral: return .primaryCoral
+        case .gold: return .warmGold
+        case .ocean: return .deepOcean
+        case .fitness: return .fitnessGreen
+        case .business: return .businessBlue
+        case .mindset: return .mindsetLavender
+        case .creative: return .creativePink
+        }
+    }
+}
+
+// MARK: - Theme Style Extensions
+extension ThemeStyle {
+    var displayName: String {
+        switch self {
+        case .energetic: return "Energetic"
+        case .professional: return "Professional"
+        case .mindful: return "Mindful"
+        case .creative: return "Creative"
+        case .balanced: return "Balanced"
+        case .calm: return "Calm"
+        case .minimal: return "Minimal"
+        case .playful: return "Playful"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .energetic: return "High energy & motivation"
+        case .professional: return "Clean & productive"
+        case .mindful: return "Peaceful & centered"
+        case .creative: return "Artistic & expressive"
+        case .balanced: return "Harmonious & versatile"
+        case .calm: return "Soothing & tranquil"
+        case .minimal: return "Simple & focused"
+        case .playful: return "Fun & vibrant"
+        }
+    }
+}
+
+extension AccentColorChoice {
+    var displayName: String {
+        switch self {
+        case .coral: return "Coral"
+        case .gold: return "Gold"
+        case .ocean: return "Ocean"
+        case .fitness: return "Fitness"
+        case .business: return "Business"
+        case .mindset: return "Mindset"
+        case .creative: return "Creative"
         }
     }
 }
@@ -1060,128 +1450,211 @@ private struct SummarySlide: View {
     let onComplete: () -> Void
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 32) {
             Spacer()
             
-            // Success animation
+            // Beautiful success animation with particles
             ZStack {
-                Circle()
-                    .fill(themeProvider.theme.accent.opacity(0.2))
-                    .frame(width: 100, height: 100)
-                    .blur(radius: 20)
+                // Animated background circles
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    themeProvider.theme.accent.opacity(0.3),
+                                    themeProvider.theme.accent.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 120 - CGFloat(index * 20), height: 120 - CGFloat(index * 20))
+                        .blur(radius: 10 + CGFloat(index * 5))
+                        .scaleEffect(1.0 + sin(Date().timeIntervalSince1970 + Double(index)) * 0.1)
+                        .animation(.easeInOut(duration: 2.0 + Double(index)).repeatForever(autoreverses: true), value: UUID())
+                }
                 
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 60, weight: .light))
-                    .foregroundColor(themeProvider.theme.accent)
-                    .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 10)
+                // Central success icon
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 80, height: 80)
+                        .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
+                    
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                }
             }
             
-            VStack(spacing: 16) {
-                Text("🎉 You're all set!")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(themeProvider.theme.textPrimary)
-                    .multilineTextAlignment(.center)
+            // Revolutionary messaging
+            VStack(spacing: 20) {
+                VStack(spacing: 12) {
+                    Text("🎉 Welcome to your flow!")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [themeProvider.theme.textPrimary, themeProvider.theme.accent],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Flowmate is now personalizing")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.textPrimary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("your entire experience")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.accent)
+                        .multilineTextAlignment(.center)
+                }
                 
                 VStack(spacing: 8) {
-                    Text("NexusGPT is now personalizing")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Text("Your AI companion will adapt its interface, personality, and guidance to match what truly drives and motivates YOU.")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
                     
-                    Text("your experience based on your interests")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
+                    Text("This is complete personalization - not just content, but your entire flow experience.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(themeProvider.theme.accent.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .italic()
+                        .padding(.top, 4)
                 }
-                .multilineTextAlignment(.center)
-                
-                Text("Your app will adapt its interface, content, and personality to match what drives and motivates YOU.")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 8)
             }
             
             Spacer()
             
-            // Quick summary panel with edit shortcuts
-            VStack(alignment: .leading, spacing: 12) {
+            // Beautiful personalization summary
+            VStack(spacing: 16) {
                 HStack {
-                    Image(systemName: "star.fill").foregroundStyle(themeProvider.theme.accent)
-                    Text("Summary")
-                        .font(.headline)
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(themeProvider.theme.accent)
+                        .font(.title2)
+                    Text("Your Personalized Setup")
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundColor(themeProvider.theme.textPrimary)
+                    Spacer()
                 }
                 
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("Interests: \(selectedInterests.map { $0.title }.joined(separator: ", "))")
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                        Spacer()
-                        Button("Edit") { onEditInterests() }
-                            .font(.caption)
-                    }
-                    HStack {
-                        Text("Theme: \(String(describing: selectedStyle).capitalized) / \(String(describing: selectedAccent).capitalized)")
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                        Spacer()
-                        Button("Edit") { onEditTheme() }
-                            .font(.caption)
-                    }
-                    HStack {
-                        Text("Fitness: \(fitness.level.displayName)")
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                        Spacer()
-                        Button("Edit") { onEditFitness() }
-                            .font(.caption)
-                    }
-                    HStack {
-                        Text("Nutrition: \(nutrition.calorieGoal.displayName)")
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                        Spacer()
-                        Button("Edit") { onEditNutrition() }
-                            .font(.caption)
-                    }
-                    HStack {
-                        Text("Motivation: \(motivation.communicationStyle.displayName)")
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                        Spacer()
-                        Button("Edit") { onEditMotivation() }
-                            .font(.caption)
+                // Dynamic interest pills
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+                    ForEach(Array(selectedInterests), id: \.self) { interest in
+                        HStack(spacing: 6) {
+                            Image(systemName: interest.icon)
+                                .font(.caption)
+                                .foregroundColor(themeProvider.theme.accent)
+                            Text(interest.title)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(themeProvider.theme.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(themeProvider.theme.accent.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(themeProvider.theme.accent.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                     }
                 }
+                
+                // Theme preview
+                HStack {
+                    Image(systemName: "paintpalette.fill")
+                        .foregroundColor(themeProvider.theme.accent)
+                        .font(.caption)
+                    Text("\(selectedStyle.displayName) • \(selectedAccent.displayName)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                    Spacer()
+                    Circle()
+                        .fill(themeProvider.theme.accent)
+                        .frame(width: 16, height: 16)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(themeProvider.theme.backgroundSecondary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.borderLight, lineWidth: 1)
+                        )
+                )
             }
-            .padding()
-            .glassCard()
-            .overlay(alignment: .topLeading) {
-                Image(systemName: "checkmark.seal.fill")
-                    .foregroundStyle(themeProvider.theme.accent)
-                    .padding(.leading, 12)
-            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [themeProvider.theme.backgroundSecondary, themeProvider.theme.backgroundPrimary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+            )
             
+            // Revolutionary enter button
             Button(action: onComplete) {
-                HStack(spacing: 12) {
-                    Text("Enter Your Personalized NexusGPT")
-                        .font(.system(size: 18, weight: .semibold))
+                HStack(spacing: 16) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 24, weight: .medium))
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enter Your Flowmate")
+                            .font(.system(size: 18, weight: .bold))
+                        Text("Start your personalized journey")
+                            .font(.system(size: 14, weight: .medium))
+                            .opacity(0.9)
+                    }
+                    
+                    Spacer()
                     
                     Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 24))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
                 .background(
-                    LinearGradient(colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+                    LinearGradient(
+                        colors: [
+                            themeProvider.theme.accent,
+                            themeProvider.theme.accent.opacity(0.8),
+                            themeProvider.theme.emphasis
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
                 )
-                .sensoryFeedback(.success, trigger: UUID())
+                .scaleEffect(1.0)
+                .animation(.bouncy, value: UUID())
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 24)
             
             Spacer(minLength: 40)
         }
         .padding(.horizontal, 24)
-        .glassCard(cornerRadius: CornerRadius.xl)
     }
 }
 
@@ -1197,18 +1670,23 @@ private struct StepIndicator: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 0) {
+            // Beautiful progress bar without step text
             ProgressView(value: progress)
                 .progressViewStyle(LinearProgressViewStyle(tint: themeProvider.theme.accent))
-                .frame(height: 3)
+                .frame(height: 4)
                 .clipShape(RoundedRectangle(cornerRadius: 2))
-            
-            HStack {
-                Text("Step \(Int(progress * 10)) of \(10)")
-                    .font(.caption2)
-                    .foregroundColor(themeProvider.theme.textSecondary)
-                Spacer()
-            }
+                .background(
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(themeProvider.theme.accent.opacity(0.15))
+                        .frame(height: 4)
+                )
+                .shadow(
+                    color: themeProvider.theme.accent.opacity(0.3),
+                    radius: 2,
+                    x: 0,
+                    y: 1
+                )
         }
     }
 }

@@ -474,3 +474,148 @@ extension AnyTransition {
     static let slideDown = AnyTransition.move(edge: .top).combined(with: .opacity)
     static let scaleAndFade = AnyTransition.scale.combined(with: .opacity)
 }
+
+// MARK: - Flowmate Modern Input Components
+struct FloatingTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    @State private var isFocused: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.8), Color.white.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 24)
+                
+                TextField(placeholder, text: $text)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .onTapGesture {
+                        isFocused = true
+                    }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isFocused ? 0.25 : 0.15),
+                                Color.white.opacity(isFocused ? 0.15 : 0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(isFocused ? 0.4 : 0.2),
+                                        Color.white.opacity(isFocused ? 0.2 : 0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: isFocused ? 2 : 1
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: isFocused ? 8 : 4, x: 0, y: 2)
+            )
+            .scaleEffect(isFocused ? 1.02 : 1.0)
+            .animation(.smooth, value: isFocused)
+        }
+    }
+}
+
+struct FloatingSecureField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    @State private var isFocused: Bool = false
+    @State private var showPassword: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.8), Color.white.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 24)
+                
+                if showPassword {
+                    TextField(placeholder, text: $text)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .onTapGesture {
+                            isFocused = true
+                        }
+                } else {
+                    SecureField(placeholder, text: $text)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .onTapGesture {
+                            isFocused = true
+                        }
+                }
+                
+                Button {
+                    showPassword.toggle()
+                } label: {
+                    Image(systemName: showPassword ? "eye.slash" : "eye")
+                        .font(.title3)
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isFocused ? 0.25 : 0.15),
+                                Color.white.opacity(isFocused ? 0.15 : 0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(isFocused ? 0.4 : 0.2),
+                                        Color.white.opacity(isFocused ? 0.2 : 0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: isFocused ? 2 : 1
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: isFocused ? 8 : 4, x: 0, y: 2)
+            )
+            .scaleEffect(isFocused ? 1.02 : 1.0)
+            .animation(.smooth, value: isFocused)
+        }
+    }
+}
