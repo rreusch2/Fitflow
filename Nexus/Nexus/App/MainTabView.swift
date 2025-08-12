@@ -73,23 +73,25 @@ struct MainTabView: View {
     private func getEnhancedTabView(for interest: UserInterest) -> some View {
         switch interest {
         case .fitness:
-            EnhancedFitnessView()
+            AIEnhancedTabView(interest: .fitness, originalView: AnyView(FitnessView()))
                 .environmentObject(themeProvider)
                 .environmentObject(authService)
         case .business:
-            EnhancedBusinessView()
+            AIEnhancedTabView(interest: .business, originalView: AnyView(BusinessView()))
                 .environmentObject(themeProvider)
                 .environmentObject(authService)
         case .wealth:
-            EnhancedWealthView()
+            AIEnhancedTabView(interest: .wealth, originalView: AnyView(WealthView()))
                 .environmentObject(themeProvider)
                 .environmentObject(authService)
         case .mindset:
-            MindsetView() // Keep existing for now, can enhance later
+            AIEnhancedTabView(interest: .mindset, originalView: AnyView(MindsetView()))
+                .environmentObject(themeProvider)
+                .environmentObject(authService)
         case .creativity:
-            CreativityView() // Keep existing for now, can enhance later
+            CreativityView() // Keep existing for now
         case .relationships:
-            RelationshipsView() // Keep existing for now, can enhance later
+            RelationshipsView() // Keep existing for now
         case .learning:
             LearningView()
         case .spirituality:

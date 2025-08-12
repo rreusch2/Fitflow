@@ -44,10 +44,10 @@ class FitnessAIAgent: AIAgent {
         
         User Profile:
         - Fitness Level: \(fitnessPrefs.level.rawValue)
-        - Primary Goals: \(fitnessPrefs.goals.map(\.rawValue).joined(separator: ", "))
         - Preferred Activities: \(fitnessPrefs.preferredActivities.map(\.rawValue).joined(separator: ", "))
-        - Available Equipment: \(fitnessPrefs.equipment.map(\.rawValue).joined(separator: ", "))
-        - Workout Frequency: \(fitnessPrefs.frequency.rawValue)
+        - Available Equipment: \(fitnessPrefs.availableEquipment.map(\.rawValue).joined(separator: ", "))
+        - Workout Duration: \(fitnessPrefs.workoutDuration.rawValue)
+        - Workout Frequency: \(fitnessPrefs.workoutFrequency.rawValue)
         
         Generate personalized fitness content including:
         1. Today's workout focus
@@ -56,7 +56,7 @@ class FitnessAIAgent: AIAgent {
         4. Motivational message
         """
         
-        let response = try await aiService.callGrokAPI(prompt: prompt, type: .workoutPlan)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .preWorkout)
         return parseAIResponse(response, for: .fitness)
     }
     
@@ -88,8 +88,8 @@ class FitnessAIAgent: AIAgent {
         
         return """
         Level: \(fitnessPrefs.level.rawValue)
-        Goals: \(fitnessPrefs.goals.map(\.rawValue).joined(separator: ", "))
         Activities: \(fitnessPrefs.preferredActivities.map(\.rawValue).joined(separator: ", "))
+        Equipment: \(fitnessPrefs.availableEquipment.map(\.rawValue).joined(separator: ", "))
         """
     }
 }
@@ -131,10 +131,9 @@ class BusinessAIAgent: AIAgent {
         \(systemPrompt)
         
         User's Business Profile:
-        - Industry Focus: \(businessPrefs.industry.rawValue)
-        - Experience Level: \(businessPrefs.experience.rawValue)
-        - Primary Goals: \(businessPrefs.goals.map(\.rawValue).joined(separator: ", "))
-        - Areas of Interest: \(businessPrefs.areasOfInterest.map(\.rawValue).joined(separator: ", "))
+        - Focus: \(businessPrefs.focus.rawValue)
+        - Work Style: \(businessPrefs.workStyle.rawValue)
+        - Weekly Hours: \(businessPrefs.weeklyHours)
         
         Generate personalized business content including:
         1. Today's strategic priority
@@ -174,9 +173,9 @@ class BusinessAIAgent: AIAgent {
         guard let businessPrefs = user.preferences?.business else { return "No business preferences set" }
         
         return """
-        Industry: \(businessPrefs.industry.rawValue)
-        Experience: \(businessPrefs.experience.rawValue)
-        Goals: \(businessPrefs.goals.map(\.rawValue).joined(separator: ", "))
+        Focus: \(businessPrefs.focus.rawValue)
+        Work Style: \(businessPrefs.workStyle.rawValue)
+        Weekly Hours: \(businessPrefs.weeklyHours)
         """
     }
 }
@@ -218,10 +217,9 @@ class WealthAIAgent: AIAgent {
         \(systemPrompt)
         
         User's Wealth Profile:
-        - Financial Goals: \(wealthPrefs.goals.map(\.rawValue).joined(separator: ", "))
-        - Investment Experience: \(wealthPrefs.investmentExperience.rawValue)
-        - Risk Tolerance: \(wealthPrefs.riskTolerance.rawValue)
-        - Investment Interests: \(wealthPrefs.investmentInterests.map(\.rawValue).joined(separator: ", "))
+        - Goals: \(wealthPrefs.goals.map(\.rawValue).joined(separator: ", "))
+        - Risk Tolerance: \(wealthPrefs.risk.rawValue)
+        - Monthly Budget: $\(wealthPrefs.monthlyBudget)
         
         Generate personalized wealth content including:
         1. Today's financial focus
@@ -262,8 +260,8 @@ class WealthAIAgent: AIAgent {
         
         return """
         Goals: \(wealthPrefs.goals.map(\.rawValue).joined(separator: ", "))
-        Experience: \(wealthPrefs.investmentExperience.rawValue)
-        Risk Tolerance: \(wealthPrefs.riskTolerance.rawValue)
+        Risk Tolerance: \(wealthPrefs.risk.rawValue)
+        Monthly Budget: $\(wealthPrefs.monthlyBudget)
         """
     }
 }
@@ -305,10 +303,8 @@ class MindsetAIAgent: AIAgent {
         \(systemPrompt)
         
         User's Mindset Profile:
-        - Focus Areas: \(mindsetPrefs.focusAreas.map(\.rawValue).joined(separator: ", "))
-        - Meditation Experience: \(mindsetPrefs.meditationExperience.rawValue)
-        - Stress Level: \(mindsetPrefs.stressLevel.rawValue)
-        - Growth Goals: \(mindsetPrefs.growthGoals.map(\.rawValue).joined(separator: ", "))
+        - Focus Areas: \(mindsetPrefs.focuses.map(\.rawValue).joined(separator: ", "))
+        - Reflection Style: \(mindsetPrefs.reflection.rawValue)
         
         Generate personalized mindset content including:
         1. Today's mental focus
@@ -317,7 +313,7 @@ class MindsetAIAgent: AIAgent {
         4. Motivational mindset message
         """
         
-        let response = try await aiService.callGrokAPI(prompt: prompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .mindset)
     }
     
@@ -348,9 +344,8 @@ class MindsetAIAgent: AIAgent {
         guard let mindsetPrefs = user.preferences?.mindset else { return "No mindset preferences set" }
         
         return """
-        Focus Areas: \(mindsetPrefs.focusAreas.map(\.rawValue).joined(separator: ", "))
-        Meditation Experience: \(mindsetPrefs.meditationExperience.rawValue)
-        Stress Level: \(mindsetPrefs.stressLevel.rawValue)
+        Focus Areas: \(mindsetPrefs.focuses.map(\.rawValue).joined(separator: ", "))
+        Reflection Style: \(mindsetPrefs.reflection.rawValue)
         """
     }
 }
@@ -369,7 +364,7 @@ class CreativityAIAgent: AIAgent {
     }
     
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent {
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt + " Generate creative inspiration and ideas.", type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .creativity)
     }
     
@@ -398,7 +393,7 @@ class RelationshipsAIAgent: AIAgent {
     }
     
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent {
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt + " Generate relationship insights and communication tips.", type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .relationships)
     }
     
@@ -426,7 +421,7 @@ class LearningAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are a Learning Accelerator AI focused on knowledge acquisition and skill development." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .learning)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -444,7 +439,7 @@ class SpiritualityAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are a Spiritual Guide AI focused on inner growth and finding purpose." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .spirituality)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -462,7 +457,7 @@ class AdventureAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are an Adventure Catalyst AI focused on exploration and enriching life experiences." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .adventure)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -480,7 +475,7 @@ class LeadershipAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are a Leadership Mentor AI focused on developing leadership skills and influence." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .leadership)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -498,7 +493,7 @@ class HealthAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are a Health Optimizer AI focused on holistic wellness and longevity." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .health)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -516,7 +511,7 @@ class FamilyAIAgent: AIAgent {
     
     var systemPrompt: String { return "You are a Family Guide AI focused on strengthening family bonds and home life." }
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent { 
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt, type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .family)
     }
     func getQuickActions(for user: User) -> [AIQuickAction] { return [] }
@@ -541,7 +536,7 @@ class CoachAIAgent: AIAgent {
     }
     
     func generatePersonalizedContent(for user: User) async throws -> AIAgentContent {
-        let response = try await aiService.callGrokAPI(prompt: systemPrompt + " Provide holistic life coaching insights.", type: .motivation)
+        let response = try await aiService.generateMotivationalMessage(for: user, trigger: .morningBoost)
         return parseAIResponse(response, for: .mindset)
     }
     
