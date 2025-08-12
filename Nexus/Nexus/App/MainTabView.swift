@@ -545,7 +545,7 @@ private struct EnhancedFeedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(item.title)
+                Text(item.title ?? item.text)
                     .font(.headline)
                 Spacer()
                 Text(item.topicTags.first?.capitalized ?? "")
@@ -1454,6 +1454,69 @@ private struct FitnessView: View {
     var todaysFocus: String {
         // TODO: Implement todaysFocus
         return "Today's focus"
+    }
+}
+
+// MARK: - WealthView (minimal implementation)
+
+private struct WealthView: View {
+    @EnvironmentObject var themeProvider: ThemeProvider
+    @EnvironmentObject var authService: AuthenticationService
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    HStack {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(themeProvider.theme.accent)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Your Wealth Flow")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                            Text("Personalized finance insights")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                    // Agent panel
+                    if authService.currentUser != nil {
+                        AgentPanel(
+                            title: "Wealth Agent",
+                            icon: "dollarsign.square.fill",
+                            context: .general,
+                            presets: [
+                                AgentPrompt(title: "Budget Plan", prompt: "Create a monthly budget with target savings and smart cuts."),
+                                AgentPrompt(title: "Investing Steps", prompt: "Suggest 3 next investing steps with brief rationale."),
+                                AgentPrompt(title: "Optimize Expenses", prompt: "Identify 5 expenses to optimize without killing QoL.")
+                            ]
+                        )
+                        .environmentObject(themeProvider)
+                        .environmentObject(authService)
+                        .padding(.horizontal, 20)
+                    }
+                }
+                .padding(.bottom, 20)
+            }
+            .background(ThemedBackground().environmentObject(themeProvider))
+            .navigationTitle("Wealth")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { } label: {
+                        Image(systemName: "gear")
+                            .foregroundColor(themeProvider.theme.accent)
+                    }
+                }
+            }
+        }
     }
 }
 
