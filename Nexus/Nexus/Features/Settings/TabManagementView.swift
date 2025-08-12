@@ -10,6 +10,7 @@ import SwiftUI
 struct TabManagementView: View {
     @EnvironmentObject var authService: AuthenticationService
     @EnvironmentObject var themeProvider: ThemeProvider
+    @Environment(\.dismiss) var dismiss
     
     @State private var availableTabs: [TabType] = []
     @State private var visibleTabs: Set<TabType> = []
@@ -29,166 +30,9 @@ struct TabManagementView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header Section
-                    VStack(spacing: 16) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Tab Management")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
-                                
-                                Text("Customize your navigation experience")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(themeProvider.theme.textSecondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Button("Preview") {
-                                showingPreview = true
-                            }
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(themeProvider.theme.accent)
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        // Max Tabs Selector
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Maximum Tabs")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.textPrimary)
-                                
-                                Spacer()
-                                
-                                Text("\(maxVisibleTabs)")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(themeProvider.theme.accent)
-                            }
-                            
-                            HStack(spacing: 12) {
-                                ForEach(3...5, id: \.self) { count in
-                                    Button {
-                                        maxVisibleTabs = count
-                                        updateVisibleTabsIfNeeded()
-                                    } label: {
-                                        Text("\(count)")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(maxVisibleTabs == count ? .white : themeProvider.theme.textPrimary)
-                                            .frame(width: 40, height: 40)
-                                            .background(
-                                                Circle()
-                                                    .fill(maxVisibleTabs == count ? themeProvider.theme.accent : themeProvider.theme.cardBackground)
-                                            )
-                                    }
-                                }
-                                
-                                Spacer()
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(themeProvider.theme.cardBackground)
-                                .shadow(color: themeProvider.theme.shadowColor, radius: 2, x: 0, y: 1)
-                        )
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    // Available Tabs Section
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Available Tabs")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.textPrimary)
-                            
-                            Spacer()
-                            
-                            Text("\(visibleTabs.count)/\(maxVisibleTabs)")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textSecondary)
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        LazyVStack(spacing: 12) {
-                            // Always visible tabs
-                            TabToggleCard(
-                                tabType: .flow,
-                                isSelected: true,
-                                isAlwaysVisible: true,
-                                themeProvider: themeProvider
-                            ) { _ in }
-                            
-                            // Dynamic interest tabs
-                            ForEach(availableInterestTabs, id: \.self) { tabType in
-                                TabToggleCard(
-                                    tabType: tabType,
-                                    isSelected: visibleTabs.contains(tabType),
-                                    isAlwaysVisible: false,
-                                    themeProvider: themeProvider
-                                ) { isSelected in
-                                    if isSelected && visibleTabs.count < maxVisibleTabs {
-                                        visibleTabs.insert(tabType)
-                                    } else if !isSelected {
-                                        visibleTabs.remove(tabType)
-                                    }
-                                }
-                                .disabled(visibleTabs.count >= maxVisibleTabs && !visibleTabs.contains(tabType))
-                            }
-                            
-                            // Always visible tabs
-                            TabToggleCard(
-                                tabType: .coach,
-                                isSelected: true,
-                                isAlwaysVisible: true,
-                                themeProvider: themeProvider
-                            ) { _ in }
-                            
-                            TabToggleCard(
-                                tabType: .profile,
-                                isSelected: true,
-                                isAlwaysVisible: true,
-                                themeProvider: themeProvider
-                            ) { _ in }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    // Save Button
-                    Button {
-                        saveTabPreferences()
-                    } label: {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 16, weight: .semibold))
-                            }
-                            
-                            Text(isLoading ? "Saving..." : "Save Changes")
-                                .font(.system(size: 16, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                        )
-                    }
-                    .disabled(isLoading)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    headerSection
+                    availableTabsSection
+                    saveButton
                 }
                 .padding(.bottom, 20)
             }
@@ -198,20 +42,187 @@ struct TabManagementView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") {
-                        // Navigation back handled by parent
+                        dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(themeProvider.theme.accent)
                 }
             }
         }
-        .onAppear {
-            loadCurrentSettings()
-        }
         .sheet(isPresented: $showingPreview) {
-            TabPreviewView(visibleTabs: Array(visibleTabs), maxTabs: maxVisibleTabs)
-                .environmentObject(themeProvider)
+            TabPreviewView(
+                visibleTabs: Array(visibleTabs),
+                maxTabs: maxVisibleTabs
+            )
+            .environmentObject(themeProvider)
         }
+    }
+    
+    private var headerSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tab Management")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                    
+                    Text("Customize your navigation experience")
+                        .font(.system(size: 16))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                }
+                
+                Spacer()
+                
+                Button("Preview") {
+                    showingPreview = true
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(themeProvider.theme.accent)
+            }
+            .padding(.horizontal, 20)
+            
+            maxTabsSelector
+        }
+    }
+    
+    private var maxTabsSelector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Maximum Tabs")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                
+                Spacer()
+                
+                Text("\(maxVisibleTabs)")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(themeProvider.theme.accent)
+            }
+            
+            HStack(spacing: 12) {
+                ForEach(3...5, id: \.self) { count in
+                    Button {
+                        maxVisibleTabs = count
+                        updateVisibleTabsIfNeeded()
+                    } label: {
+                        Text("\(count)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(maxVisibleTabs == count ? .white : themeProvider.theme.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(maxVisibleTabs == count ? themeProvider.theme.accent : themeProvider.theme.backgroundSecondary)
+                            )
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeProvider.theme.backgroundSecondary)
+                .shadow(color: themeProvider.theme.textSecondary.opacity(0.1), radius: 2, x: 0, y: 1)
+        )
+        .padding(.horizontal, 20)
+    }
+    
+    private var availableTabsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Available Tabs")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                
+                Spacer()
+                
+                Text("\(visibleTabs.count)/\(maxVisibleTabs)")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textSecondary)
+            }
+            .padding(.horizontal, 20)
+            
+            LazyVStack(spacing: 12) {
+                // Always visible tabs
+                TabToggleCard(
+                    tabType: .flow,
+                    isSelected: true,
+                    isAlwaysVisible: true,
+                    themeProvider: themeProvider
+                ) { _ in }
+                
+                // Dynamic interest tabs
+                ForEach(availableInterestTabs, id: \.self) { tabType in
+                    TabToggleCard(
+                        tabType: tabType,
+                        isSelected: visibleTabs.contains(tabType),
+                        isAlwaysVisible: false,
+                        themeProvider: themeProvider
+                    ) { isSelected in
+                        if isSelected && visibleTabs.count < maxVisibleTabs {
+                            visibleTabs.insert(tabType)
+                        } else if !isSelected {
+                            visibleTabs.remove(tabType)
+                        }
+                    }
+                    .disabled(visibleTabs.count >= maxVisibleTabs && !visibleTabs.contains(tabType))
+                }
+                
+                // Always visible tabs
+                TabToggleCard(
+                    tabType: .coach,
+                    isSelected: true,
+                    isAlwaysVisible: true,
+                    themeProvider: themeProvider
+                ) { _ in }
+                
+                TabToggleCard(
+                    tabType: .profile,
+                    isSelected: true,
+                    isAlwaysVisible: true,
+                    themeProvider: themeProvider
+                ) { _ in }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    private var saveButton: some View {
+        Button {
+            saveTabPreferences()
+        } label: {
+            HStack {
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .tint(.white)
+                } else {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                
+                Text(isLoading ? "Saving..." : "Save Changes")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                RoundedRectangle(cornerRadius: 25)
+                    .fill(
+                        LinearGradient(
+                            colors: [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            )
+        }
+        .disabled(isLoading)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
     }
     
     private var availableInterestTabs: [TabType] {
@@ -275,8 +286,8 @@ struct TabManagementView: View {
         
         // Update the theme preferences with new tab visibility
         var updatedTheme = user.preferences?.theme ?? ThemePreferences(
-            style: .balanced,
-            accent: .blue,
+            style: .energetic,
+            accent: .coral,
             selectedInterests: userInterests,
             tabVisibility: newTabVisibility
         )
@@ -316,7 +327,7 @@ private struct TabToggleCard: View {
                 .frame(width: 40, height: 40)
                 .background(
                     Circle()
-                        .fill(isSelected ? themeProvider.theme.accent.opacity(0.15) : themeProvider.theme.cardBackground)
+                        .fill(isSelected ? themeProvider.theme.accent.opacity(0.15) : themeProvider.theme.backgroundSecondary)
                 )
             
             VStack(alignment: .leading, spacing: 2) {
@@ -353,8 +364,8 @@ private struct TabToggleCard: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.cardBackground)
-                .shadow(color: themeProvider.theme.shadowColor, radius: 1, x: 0, y: 1)
+                .fill(themeProvider.theme.backgroundSecondary)
+                .shadow(color: themeProvider.theme.textSecondary.opacity(0.1), radius: 1, x: 0, y: 1)
         )
     }
 }
@@ -401,7 +412,7 @@ private struct TabPreviewView: View {
                         .padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(themeProvider.theme.cardBackground.opacity(0.3))
+                                .fill(themeProvider.theme.backgroundSecondary.opacity(0.3))
                         )
                     }
                 }
@@ -409,8 +420,8 @@ private struct TabPreviewView: View {
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(themeProvider.theme.cardBackground)
-                        .shadow(color: themeProvider.theme.shadowColor, radius: 4, x: 0, y: 2)
+                        .fill(themeProvider.theme.backgroundSecondary)
+                        .shadow(color: themeProvider.theme.textSecondary.opacity(0.2), radius: 4, x: 0, y: 2)
                 )
                 .padding(.horizontal, 20)
                 

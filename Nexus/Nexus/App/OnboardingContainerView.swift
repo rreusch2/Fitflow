@@ -347,7 +347,12 @@ struct OnboardingContainerView: View {
         let themePrefs = ThemePreferences(
             style: selectedStyle,
             accent: selectedAccent,
-            selectedInterests: Array(selectedInterests)
+            selectedInterests: Array(selectedInterests),
+            tabVisibility: TabVisibilityPreferences(
+                visibleTabs: Array(selectedInterests),
+                tabOrder: [.flow, .fitness, .business, .mindset, .creativity, .wealth, .relationships],
+                maxVisibleTabs: min(selectedInterests.count + 1, 5) // Include flow tab + selected interests, max 5
+            )
         )
         
         let userPreferences = UserPreferences(

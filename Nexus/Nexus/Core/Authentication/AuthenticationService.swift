@@ -436,7 +436,12 @@ extension AuthenticationService {
             theme: ThemePreferences(
                 style: .energetic,
                 accent: .coral,
-                selectedInterests: [.fitness, .mindset, .business]
+                selectedInterests: [.fitness, .mindset, .business],
+                tabVisibility: TabVisibilityPreferences(
+                    visibleTabs: [.fitness, .mindset, .business],
+                    tabOrder: [.flow, .fitness, .business, .mindset, .creativity],
+                    maxVisibleTabs: 4
+                )
             ),
             goals: [
                 Goal(
