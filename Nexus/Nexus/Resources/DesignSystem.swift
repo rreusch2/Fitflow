@@ -46,6 +46,7 @@ extension Color {
     static let successGreen = Color(red: 85/255, green: 239/255, blue: 196/255) // #55EFC4
     static let warningGold = Color(red: 255/255, green: 183/255, blue: 77/255) // #FFB74D
     static let errorCoral = Color(red: 255/255, green: 107/255, blue: 107/255) // #FF6B6B
+    static let errorRed = Color(red: 255/255, green: 107/255, blue: 107/255) // #FF6B6B
     static let infoOcean = Color(red: 116/255, green: 185/255, blue: 255/255) // #74B9FF
     
     // === WARM NEUTRAL PALETTE ===
@@ -70,6 +71,7 @@ extension Color {
     static let primaryGreen = primaryCoral // Map old to new
     static let deepBlue = deepOcean
     static let motivationalOrange = warmGold
+    static let motivationalOrangeLight = Color(red: 255/255, green: 204/255, blue: 128/255) // #FFCC80
     
     // === GRADIENT COMBINATIONS ===
     static let energeticGradient = LinearGradient(
@@ -162,6 +164,78 @@ extension View {
             x: 0,
             y: 8
         )
+    }
+}
+
+// MARK: - Themed Gradient Background + Glass Card
+struct ThemedBackground: View {
+    @EnvironmentObject var themeProvider: ThemeProvider
+    
+    var body: some View {
+        Group {
+            switch themeProvider.style {
+            case .energetic, .playful:
+                Color.energeticGradient
+            case .professional, .calm, .minimal:
+                Color.professionalGradient
+            case .mindful, .creative, .balanced:
+                Color.warmGradient
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+struct GlassCard: ViewModifier {
+    let cornerRadius: CGFloat
+    
+    init(cornerRadius: CGFloat = CornerRadius.lg) {
+        self.cornerRadius = cornerRadius
+    }
+    
+    func body(content: Content) -> some View {
+        content
+            .padding(Spacing.lg)
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 12)
+    }
+}
+
+extension View {
+    func glassCard(cornerRadius: CGFloat = CornerRadius.lg) -> some View {
+        modifier(GlassCard(cornerRadius: cornerRadius))
+    }
+    
+    func tipBanner(icon: String, text: String) -> some View {
+        self.overlay(alignment: .top) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.textSecondary)
+                Text(text)
+                    .font(.caption)
+                    .foregroundColor(.textSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: CornerRadius.md)
+                    .fill(Color.backgroundSecondary.opacity(0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CornerRadius.md)
+                            .stroke(Color.borderLight, lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal)
+            .padding(.top)
+        }
     }
 }
 
@@ -343,6 +417,7 @@ struct InputFieldStyle: ViewModifier {
                             .fill(Color.backgroundSecondary)
                     )
             )
+            .foregroundColor(.textPrimary)
     }
 }
 

@@ -172,6 +172,103 @@ struct MotivationPreferences: Codable {
     }
 }
 
+// MARK: - Business Preferences
+enum BusinessFocus: String, Codable, CaseIterable, Identifiable {
+    case productivity, entrepreneurship, leadership, sales
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+enum WorkStyle: String, Codable, CaseIterable, Identifiable {
+    case remote, hybrid, onsite
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+struct BusinessPreferences: Codable {
+    var focus: BusinessFocus
+    var workStyle: WorkStyle
+    var weeklyHours: Int
+}
+
+// MARK: - Creativity Preferences
+enum CreativeMedium: String, Codable, CaseIterable, Identifiable {
+    case music, writing, painting, photography, video
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+enum CreativeTool: String, Codable, CaseIterable, Identifiable {
+    case ipad, pencil, camera, daw, editor
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .daw: return "DAW"
+        default: return rawValue.capitalized
+        }
+    }
+}
+
+struct CreativityPreferences: Codable {
+    var mediums: [CreativeMedium]
+    var tools: [CreativeTool]
+    var weeklyHours: Int
+}
+
+// MARK: - Mindset Preferences
+enum MindsetFocus: String, Codable, CaseIterable, Identifiable {
+    case growth, habits, resilience, mindfulness
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+enum ReflectionPreference: String, Codable, CaseIterable, Identifiable {
+    case none, daily, weekly
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+struct MindsetPreferences: Codable {
+    var focuses: [MindsetFocus]
+    var reflection: ReflectionPreference
+}
+
+// MARK: - Wealth Preferences
+enum WealthGoal: String, Codable, CaseIterable, Identifiable {
+    case saving, investing, debtFree, income
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .debtFree: return "Debt-Free"
+        default: return rawValue.capitalized
+        }
+    }
+}
+
+enum RiskTolerance: String, Codable, CaseIterable, Identifiable {
+    case low, moderate, high
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+struct WealthPreferences: Codable {
+    var goals: [WealthGoal]
+    var risk: RiskTolerance
+    var monthlyBudget: Int
+}
+
+// MARK: - Relationship Preferences
+enum RelationshipFocus: String, Codable, CaseIterable, Identifiable {
+    case dating, marriage, family, friendships, networking
+    var id: String { rawValue }
+    var displayName: String { rawValue.capitalized }
+}
+
+struct RelationshipPreferences: Codable {
+    var focuses: [RelationshipFocus]
+    var weeklySocialHours: Int
+}
+
 enum CommunicationStyle: String, Codable, CaseIterable {
     case energetic = "energetic"
     case calm = "calm"
@@ -303,6 +400,7 @@ enum GoalType: String, Codable, CaseIterable {
     case flexibility = "flexibility"
     case habit = "habit"
     case performance = "performance"
+    case career = "career"
     
     var displayName: String {
         switch self {
@@ -314,6 +412,7 @@ enum GoalType: String, Codable, CaseIterable {
         case .flexibility: return "Flexibility"
         case .habit: return "Habit Building"
         case .performance: return "Performance"
+        case .career: return "Career"
         }
     }
     
@@ -327,6 +426,7 @@ enum GoalType: String, Codable, CaseIterable {
         case .flexibility: return "figure.yoga"
         case .habit: return "checkmark.circle.fill"
         case .performance: return "trophy.fill"
+        case .career: return "briefcase.fill"
         }
     }
 }

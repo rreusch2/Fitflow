@@ -428,6 +428,11 @@ extension AuthenticationService {
                 motivationTriggers: [.morningBoost, .preWorkout],
                 preferredTimes: [.morning, .evening]
             ),
+            business: BusinessPreferences(focus: .leadership, workStyle: .remote, weeklyHours: 8),
+            creativity: CreativityPreferences(mediums: [.music, .writing], tools: [.ipad, .pencil], weeklyHours: 4),
+            mindset: MindsetPreferences(focuses: [.growth, .habits], reflection: .weekly),
+            wealth: WealthPreferences(goals: [.saving, .investing], risk: .moderate, monthlyBudget: 500),
+            relationships: RelationshipPreferences(focuses: [.friendships, .networking], weeklySocialHours: 6),
             goals: [
                 Goal(
                     id: UUID(),

@@ -13,6 +13,9 @@ enum ThemeStyle: String, CaseIterable, Codable {
     case mindful        // Wellness, meditation, calm
     case creative       // Artistic, hobbies, self-expression
     case balanced       // Mixed interests, harmonious
+    case calm
+    case minimal
+    case playful
 }
 
 enum AccentColorChoice: String, CaseIterable, Codable {

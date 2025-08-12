@@ -19,84 +19,102 @@ struct AuthenticationView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Spacer()
-                Image(systemName: "figure.run")
-                    .font(.system(size: 64))
-                    .foregroundColor(themeProvider.theme.accent)
-                Text("NexusGPT")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+            ZStack {
+                ThemedBackground()
+                    .environmentObject(themeProvider)
                 
-                VStack(spacing: 12) {
-                    if isSignUp {
-                        TextField("Full Name", text: $fullName)
-                            .textContentType(.name)
-                            .autocapitalization(.words)
-                            .inputFieldStyle(isError: false)
-                    }
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .inputFieldStyle(isError: false)
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .inputFieldStyle(isError: false)
-                }
-                .padding(.horizontal)
-                
-                if !formErrors.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(formErrors, id: \.self) { err in
-                            Text("• \(err)")
-                                .font(.caption)
-                                .foregroundColor(.errorRed)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "brain.head.profile")
+                                .font(.system(size: 64, weight: .light))
+                                .foregroundColor(.white)
+                                .shadow(color: .white.opacity(0.35), radius: 8)
+                            Text("NexusGPT")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
                         }
-                    }
-                    .padding(.horizontal)
-                }
-                
-                Button {
-                    Task { await submit() }
-                } label: {
-                    Text(isSignUp ? "Create Account" : "Sign In")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PrimaryButtonStyle(isEnabled: !authService.isLoading))
-                .padding(.horizontal)
-                
-                Button {
-                    withAnimation(.smooth) { isSignUp.toggle() }
-                } label: {
-                    Text(isSignUp ? "Have an account? Sign In" : "New here? Create an account")
-                }
-                .buttonStyle(TertiaryButtonStyle())
-                
-                if let error = authService.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .foregroundColor(.errorRed)
-                        .font(.caption)
+                        
+                        VStack(spacing: 16) {
+                            if isSignUp {
+                                TextField("Full Name", text: $fullName)
+                                    .textContentType(.name)
+                                    .autocapitalization(.words)
+                                    .foregroundColor(.textPrimary)
+                                    .inputFieldStyle(isError: false)
+                            }
+                            TextField("Email", text: $email)
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                                .textInputAutocapitalization(.never)
+                                .foregroundColor(.textPrimary)
+                                .inputFieldStyle(isError: false)
+                            SecureField("Password", text: $password)
+                                .textContentType(.password)
+                                .textInputAutocapitalization(.never)
+                                .foregroundColor(.textPrimary)
+                                .inputFieldStyle(isError: false)
+                        }
+                        .glassCard(cornerRadius: CornerRadius.xl)
                         .padding(.horizontal)
-                }
-                
-                Spacer()
-                
-                Button {
-                    Task { await authService.signInWithApple() }
-                } label: {
-                    HStack {
-                        Image(systemName: "applelogo")
-                        Text("Sign in with Apple")
+                        
+                        if !formErrors.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(formErrors, id: \.self) { err in
+                                    Text("• \(err)")
+                                        .font(.caption)
+                                        .foregroundColor(.errorRed)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .glassCard()
+                            .padding(.horizontal)
+                        }
+                        
+                        VStack(spacing: 12) {
+                            Button {
+                                Task { await submit() }
+                            } label: {
+                                Text(isSignUp ? "Create Account" : "Sign In")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryButtonStyle(isEnabled: !authService.isLoading))
+                            
+                            Button {
+                                withAnimation(.smooth) { isSignUp.toggle() }
+                            } label: {
+                                Text(isSignUp ? "Have an account? Sign In" : "New here? Create an account")
+                            }
+                            .buttonStyle(TertiaryButtonStyle())
+                            
+                            if let error = authService.errorMessage, !error.isEmpty {
+                                Text(error)
+                                    .foregroundColor(.errorRed)
+                                    .font(.caption)
+                            }
+                            
+                            Button {
+                                Task { await authService.signInWithApple() }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "applelogo")
+                                    Text("Sign in with Apple")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                        }
+                        .glassCard()
+                        .padding(.horizontal)
+                        .padding(.bottom)
                     }
-                    .frame(maxWidth: .infinity)
+                    .padding(.top, 80)
                 }
-                .buttonStyle(SecondaryButtonStyle())
-                .padding([.horizontal, .bottom])
             }
-            .background(themeProvider.theme.backgroundPrimary.ignoresSafeArea())
             .navigationTitle(isSignUp ? "Create Account" : "Welcome Back")
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color.clear, for: .navigationBar)
         }
     }
     

@@ -68,12 +68,17 @@ struct UserPreferences: Codable {
     let fitness: FitnessPreferences
     let nutrition: NutritionPreferences
     let motivation: MotivationPreferences
+    let business: BusinessPreferences?
+    let creativity: CreativityPreferences?
+    let mindset: MindsetPreferences?
+    let wealth: WealthPreferences?
+    let relationships: RelationshipPreferences?
     let goals: [Goal]
     let createdAt: Date
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
-        case fitness, nutrition, motivation, goals
+        case fitness, nutrition, motivation, business, creativity, mindset, wealth, relationships, goals
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
