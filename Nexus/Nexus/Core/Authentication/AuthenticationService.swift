@@ -433,6 +433,11 @@ extension AuthenticationService {
             mindset: MindsetPreferences(focuses: [.growth, .habits], reflection: .weekly),
             wealth: WealthPreferences(goals: [.saving, .investing], risk: .moderate, monthlyBudget: 500),
             relationships: RelationshipPreferences(focuses: [.friendships, .networking], weeklySocialHours: 6),
+            theme: ThemePreferences(
+                style: .balanced,
+                accent: .coral,
+                selectedInterests: [.fitness, .mindset, .business]
+            ),
             goals: [
                 Goal(
                     id: UUID(),
