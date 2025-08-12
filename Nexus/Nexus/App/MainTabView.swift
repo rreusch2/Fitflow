@@ -401,8 +401,8 @@ private struct DraggableSpinningCoachButton: View {
                     isDragging = false
                     
                     // Update final position and reset offset
-                    let newX = position.x + value.translation.x
-                    let newY = position.y + value.translation.y
+                    let newX = position.x + value.translation.width
+                    let newY = position.y + value.translation.height
                     
                     // Keep within screen bounds with padding
                     let screenBounds = UIScreen.main.bounds
