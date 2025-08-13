@@ -1251,6 +1251,24 @@ struct StyleCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+        case .vibrancy:
+            return Color.vibrancyGradient
+        case .prism:
+            return Color.prismGradient
+        case .sunset:
+            return Color.sunsetGradient
+        case .ocean:
+            return Color.oceanGradient
+        case .neon:
+            return LinearGradient(
+                colors: [
+                    Color(red: 57/255, green: 255/255, blue: 20/255),
+                    Color(red: 255/255, green: 0/255, blue: 150/255),
+                    Color(red: 0/255, green: 200/255, blue: 255/255)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
 }
@@ -1316,6 +1334,11 @@ struct AccentColorCard: View {
         case .business: return .businessBlue
         case .mindset: return .mindsetLavender
         case .creative: return .creativePink
+        case .vibrancy: return .primaryCoral
+        case .prism: return .businessBlue
+        case .sunset: return .warmGold
+        case .neon: return .fitnessGreen
+        case .cosmic: return .deepOceanDark
         }
     }
 }
@@ -1330,6 +1353,11 @@ extension ThemeStyle {
         case .minimal: return "Minimal"
         case .playful: return "Playful"
         case .dark: return "Dark"
+        case .vibrancy: return "Vibrancy"
+        case .prism: return "Prism"
+        case .sunset: return "Sunset"
+        case .ocean: return "Ocean"
+        case .neon: return "Neon"
         }
     }
     
@@ -1341,6 +1369,11 @@ extension ThemeStyle {
         case .minimal: return "Pure elegant simplicity"
         case .playful: return "Vibrant rainbow burst"
         case .dark: return "Sleek sophisticated dark"
+        case .vibrancy: return "Vibrant multi-color energy"
+        case .prism: return "Spectrum light refraction"
+        case .sunset: return "Warm golden hour magic"
+        case .ocean: return "Deep oceanic tranquility"
+        case .neon: return "Cyberpunk electric glow"
         }
     }
 }
@@ -1355,6 +1388,11 @@ extension AccentColorChoice {
         case .business: return "Business"
         case .mindset: return "Mindset"
         case .creative: return "Creative"
+        case .vibrancy: return "Vibrancy"
+        case .prism: return "Prism"
+        case .sunset: return "Sunset"
+        case .neon: return "Neon"
+        case .cosmic: return "Cosmic"
         }
     }
 }

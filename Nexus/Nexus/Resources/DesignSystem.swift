@@ -89,6 +89,47 @@ extension Color {
         endPoint: .bottomTrailing
     )
     
+    // === NEW MODERN GRADIENTS ===
+    static let vibrancyGradient = LinearGradient(
+        colors: [
+            Color(red: 255/255, green: 107/255, blue: 107/255).opacity(0.9),
+            Color(red: 255/255, green: 183/255, blue: 77/255).opacity(0.8),
+            Color(red: 85/255, green: 239/255, blue: 196/255).opacity(0.7)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let prismGradient = LinearGradient(
+        colors: [
+            Color(red: 162/255, green: 155/255, blue: 254/255),
+            Color(red: 116/255, green: 185/255, blue: 255/255),
+            Color(red: 255/255, green: 107/255, blue: 129/255)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let sunsetGradient = LinearGradient(
+        colors: [
+            Color(red: 255/255, green: 94/255, blue: 77/255),
+            Color(red: 255/255, green: 154/255, blue: 0/255),
+            Color(red: 255/255, green: 206/255, blue: 84/255)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let oceanGradient = LinearGradient(
+        colors: [
+            Color(red: 72/255, green: 126/255, blue: 176/255),
+            Color(red: 116/255, green: 185/255, blue: 255/255),
+            Color(red: 85/255, green: 239/255, blue: 196/255)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
     static let professionalGradient = LinearGradient(
         colors: [
             Color(red: 116/255, green: 185/255, blue: 255/255), // Business blue bright
@@ -165,6 +206,33 @@ struct Spacing {
     static let xl: CGFloat = 32
     static let xxl: CGFloat = 48
     static let xxxl: CGFloat = 64
+}
+
+// MARK: - Shimmer Effect
+struct ShimmerEffect: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color.clear,
+                Color.white.opacity(0.4),
+                Color.clear
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .rotationEffect(.degrees(45))
+        .scaleEffect(x: isAnimating ? 3 : 0.1, y: 1)
+        .animation(
+            .easeInOut(duration: 1.5)
+                .repeatForever(autoreverses: false),
+            value: isAnimating
+        )
+        .onAppear {
+            isAnimating = true
+        }
+    }
 }
 
 // MARK: - Corner Radius
@@ -276,6 +344,29 @@ struct ThemedBackground: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
+            case .vibrancy:
+                // Ultra-modern vibrant gradient
+                Color.vibrancyGradient.opacity(0.2)
+            case .prism:
+                // Rainbow spectrum gradient
+                Color.prismGradient.opacity(0.15)
+            case .sunset:
+                // Warm sunset gradient
+                Color.sunsetGradient.opacity(0.2)
+            case .ocean:
+                // Cool ocean gradient
+                Color.oceanGradient.opacity(0.15)
+            case .neon:
+                // Cyberpunk neon gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 8/255, green: 8/255, blue: 12/255),
+                        Color(red: 15/255, green: 15/255, blue: 20/255),
+                        Color(red: 25/255, green: 25/255, blue: 32/255)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             }
         }
         .ignoresSafeArea()
@@ -284,10 +375,12 @@ struct ThemedBackground: View {
 
 struct GlassCard: ViewModifier {
     let cornerRadius: CGFloat
+    let intensity: Double
     @EnvironmentObject var themeProvider: ThemeProvider
     
-    init(cornerRadius: CGFloat = CornerRadius.lg) {
+    init(cornerRadius: CGFloat = CornerRadius.lg, intensity: Double = 0.85) {
         self.cornerRadius = cornerRadius
+        self.intensity = intensity
     }
     
     func body(content: Content) -> some View {
@@ -311,8 +404,66 @@ struct GlassCard: ViewModifier {
 }
 
 extension View {
-    func glassCard(cornerRadius: CGFloat = CornerRadius.lg) -> some View {
-        modifier(GlassCard(cornerRadius: cornerRadius))
+    func glassCard(cornerRadius: CGFloat = CornerRadius.lg, intensity: Double = 0.85) -> some View {
+        modifier(GlassCard(cornerRadius: cornerRadius, intensity: intensity))
+    }
+    
+    func neumorphicCard(cornerRadius: CGFloat = 16, isPressed: Bool = false) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(
+                        color: Color.black.opacity(0.1),
+                        radius: isPressed ? 2 : 8,
+                        x: isPressed ? 1 : 4,
+                        y: isPressed ? 1 : 4
+                    )
+                    .shadow(
+                        color: Color.white.opacity(0.8),
+                        radius: isPressed ? 1 : 4,
+                        x: isPressed ? -1 : -4,
+                        y: isPressed ? -1 : -4
+                    )
+            )
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
+    }
+    
+    func floatingGlassCard(cornerRadius: CGFloat = 20) -> some View {
+        self
+            .background(
+                ZStack {
+                    // Background blur
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(0.9)
+                    
+                    // Border highlight
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.6),
+                                    Color.white.opacity(0.2),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                }
+                .shadow(color: Color.black.opacity(0.12), radius: 20, x: 0, y: 10)
+                .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
+            )
+    }
+    
+    func gradientAccent(_ gradient: LinearGradient) -> some View {
+        self.overlay(
+            gradient
+                .mask(self)
+        )
     }
     
     func tipBanner(icon: String, text: String) -> some View {
@@ -339,10 +490,10 @@ extension View {
             .padding(.top)
         }
     }
-
+    
     // High-contrast text that works on all backgrounds
     func readableText() -> some View {
-        self.foregroundColor(Color(red: 26/255, green: 32/255, blue: 46/255)) // Ultra high contrast dark
+        self.foregroundColor(Color.readableTextOnLight) // Use predefined high-contrast color
     }
     
     // Pristine backdrop for perfect readability on gradients
@@ -412,11 +563,21 @@ extension View {
             )
     }
     
+    // Smart text color that adapts to background
+    func adaptiveTextColor(theme: ThemeProvider) -> some View {
+        self.foregroundColor(theme.theme.adaptiveTextOnCard)
+    }
+    
+    // Smart secondary text color that adapts to background
+    func adaptiveSecondaryTextColor(theme: ThemeProvider) -> some View {
+        self.foregroundColor(theme.theme.adaptiveSecondaryTextOnCard)
+    }
+    
     // Smart text color that adapts to the current theme style
     func smartTextColor(theme: ThemeProvider) -> some View {
         self.foregroundColor(
             theme.style == .dark ? Color.white : 
-            (theme.style == .minimal ? theme.theme.textPrimary : Color.white)
+            (theme.style == .minimal ? theme.theme.textPrimary : theme.theme.cardText)
         )
     }
     
@@ -424,7 +585,25 @@ extension View {
     func smartSecondaryTextColor(theme: ThemeProvider) -> some View {
         self.foregroundColor(
             theme.style == .dark ? Color(red: 174/255, green: 174/255, blue: 178/255) :
-            (theme.style == .minimal ? theme.theme.textSecondary : Color.white.opacity(0.85))
+            (theme.style == .minimal ? theme.theme.textSecondary : theme.theme.adaptiveSecondaryTextOnCard)
+        )
+    }
+    
+    // Gradient text effect
+    func gradientText(_ gradient: LinearGradient) -> some View {
+        self.overlay(
+            gradient
+                .mask(
+                    self
+                )
+        )
+    }
+    
+    // Shimmer effect for loading states
+    func shimmerEffect() -> some View {
+        self.overlay(
+            ShimmerEffect()
+                .mask(self)
         )
     }
 }

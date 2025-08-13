@@ -72,9 +72,7 @@ struct MainTabView: View {
             // Coach Overlay
             if showCoach {
                 CoachOverlay(isPresented: $showCoach) {
-                    FlowmateCoachView()
-                        .environmentObject(themeProvider)
-                        .environmentObject(authService)
+                    CoachChatView()
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(1)
@@ -356,64 +354,73 @@ private struct DraggableSpinningCoachButton: View {
     @State private var animate = false
     @State private var rotation: Double = 0
     @State private var isDragging = false
-    @State private var dragOffset = CGSize.zero
+    @State private var startPosition: CGPoint = .zero
     
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                // Outer glow circle
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 62, height: 62)
-                    .scaleEffect(animate ? 1.08 : 1.0)
-                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: animate)
-                
-                // Main button circle
-                Circle()
-                    .fill(color)
-                    .frame(width: 56, height: 56)
-                
-                // Your logo icon - constantly spinning!
-                Image(systemName: "brain.head.profile")
-                    .foregroundColor(.white)
-                    .font(.system(size: 24, weight: .light))
-                    .rotationEffect(.degrees(rotation))
-                    .animation(.linear(duration: 3.0).repeatForever(autoreverses: false), value: rotation)
-            }
-            .shadow(color: color.opacity(0.35), radius: 10, x: 0, y: 6)
-            .scaleEffect(isDragging ? 1.1 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isDragging)
+        ZStack {
+            // Outer glow circle
+            Circle()
+                .fill(color.opacity(0.15))
+                .frame(width: 62, height: 62)
+                .scaleEffect(animate ? 1.08 : 1.0)
+                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: animate)
+            
+            // Main button circle
+            Circle()
+                .fill(color)
+                .frame(width: 56, height: 56)
+            
+            // Your logo icon - constantly spinning!
+            Image(systemName: "brain.head.profile")
+                .foregroundColor(.white)
+                .font(.system(size: 24, weight: .light))
+                .rotationEffect(.degrees(rotation))
+                .animation(.linear(duration: 3.0).repeatForever(autoreverses: false), value: rotation)
         }
-        .position(x: position.x + dragOffset.width, y: position.y + dragOffset.height)
+        .shadow(color: color.opacity(0.35), radius: 10, x: 0, y: 6)
+        .scaleEffect(isDragging ? 1.1 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isDragging)
+        .contentShape(Circle())
+        .position(x: position.x, y: position.y)
         .onAppear {
             animate = true
             rotation = 360 // Start the constant spinning
         }
-        .gesture(
-            DragGesture()
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if !isDragging {
                         isDragging = true
+                        startPosition = position
                     }
-                    dragOffset = value.translation
-                }
-                .onEnded { value in
-                    isDragging = false
-                    
-                    // Update final position and reset offset
-                    let newX = position.x + value.translation.width
-                    let newY = position.y + value.translation.height
-                    
-                    // Keep within screen bounds with padding
+                    // Live update position with drag
                     let screenBounds = UIScreen.main.bounds
+                    let newX = startPosition.x + value.translation.width
+                    let newY = startPosition.y + value.translation.height
                     let constrainedX = max(40, min(screenBounds.width - 40, newX))
                     let constrainedY = max(100, min(screenBounds.height - 180, newY)) // Above nav bar
-                    
                     position = CGPoint(x: constrainedX, y: constrainedY)
-                    dragOffset = .zero
+                }
+                .onEnded { value in
+                    let distance = sqrt(value.translation.width * value.translation.width + value.translation.height * value.translation.height)
+                    isDragging = false
+                    
+                    // Treat as tap if very small movement
+                    if distance < 8 {
+                        action()
+                        return
+                    }
+                    // Snap to nearest horizontal edge
+                    let screenBounds = UIScreen.main.bounds
+                    let targetX = (position.x < screenBounds.midX) ? 40 : screenBounds.width - 40
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        position = CGPoint(x: targetX, y: position.y)
+                    }
                 }
         )
-        .accessibilityLabel("Draggable Coach - Hold to move around")
+        .zIndex(isDragging ? 10 : 0)
+        .accessibilityLabel("Coach. Drag to move, tap to open.")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -585,6 +592,7 @@ private struct AgentPanel: View {
 
 private struct EnhancedFeedCard: View {
     let item: FeedItem
+    @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -594,11 +602,11 @@ private struct EnhancedFeedCard: View {
                 Spacer()
                 Text(item.topicTags.first?.capitalized ?? "")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(themeProvider.theme.textSecondary)
             }
             Text(item.text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundColor(themeProvider.theme.textSecondary)
         }
         .padding(16)
         .background(
@@ -618,6 +626,7 @@ private struct StatsCard: View {
     let value: String
     let icon: String
     let color: Color
+    @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
         HStack(spacing: 12) {
@@ -627,21 +636,16 @@ private struct StatsCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(themeProvider.theme.adaptiveSecondaryTextOnCard)
                 Text(value)
                     .font(.headline)
+                    .foregroundColor(themeProvider.theme.adaptiveTextOnCard)
             }
             Spacer()
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.backgroundSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.borderLight, lineWidth: 1)
-                )
-        )
+        .padding(16)
+        .floatingGlassCard(cornerRadius: 14)
+        .environmentObject(themeProvider)
     }
 }
 
@@ -681,6 +685,7 @@ private struct PlansView: View {
 private struct FlowmateCoachView: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @EnvironmentObject var authService: AuthenticationService
+    @Environment(\.colorScheme) var colorScheme
     
     private var userInterests: [UserInterest] {
         authService.currentUser?.preferences?.theme.selectedInterests ?? []
@@ -712,12 +717,12 @@ private struct FlowmateCoachView: View {
                     VStack(spacing: 8) {
                         Text("Your Flowmate Coach")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                            .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                             .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                         
                         Text(personalizedCoachSubtitle)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                            .foregroundColor(themeProvider.secondaryTextForSystemContext(colorScheme))
                             .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
@@ -780,7 +785,7 @@ private struct FlowmateCoachView: View {
                         HStack {
                     Text("Quick Actions")
                                 .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                                 .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                             Spacer()
                         }
@@ -797,7 +802,7 @@ private struct FlowmateCoachView: View {
                                     
                                     Text(action.title)
                                         .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Color(red: 26/255, green: 32/255, blue: 46/255))
+                                        .foregroundColor(themeProvider.theme.adaptiveTextOnCard)
                                             .multilineTextAlignment(.center)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -822,7 +827,7 @@ private struct FlowmateCoachView: View {
                         HStack {
                             Text("Recent Insights")
                                 .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                                 .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                 Spacer()
                         }
@@ -838,18 +843,18 @@ private struct FlowmateCoachView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(insight.title)
                                             .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(Color(red: 26/255, green: 32/255, blue: 46/255))
+                                            .foregroundColor(themeProvider.theme.adaptiveTextOnCard)
                                         
                                         Text(insight.subtitle)
                                             .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(Color(red: 71/255, green: 85/255, blue: 105/255))
+                                            .foregroundColor(themeProvider.theme.adaptiveSecondaryTextOnCard)
                                     }
                                     
                                     Spacer()
                                     
                                     Image(systemName: "arrow.right")
                                         .font(.caption)
-                                        .foregroundColor(Color(red: 71/255, green: 85/255, blue: 105/255))
+                                        .foregroundColor(themeProvider.theme.textSecondary)
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
@@ -1037,6 +1042,7 @@ private struct FlowmateCoachView: View {
 private struct ProfileView: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @EnvironmentObject var authService: AuthenticationService
+    @Environment(\.colorScheme) var colorScheme
     
     private var userInterests: [UserInterest] {
         authService.currentUser?.preferences?.theme.selectedInterests ?? []
@@ -1045,7 +1051,7 @@ private struct ProfileView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Your Interests").foregroundStyle(themeProvider.theme.gradientTextSecondary)) {
+                Section(header: Text("Your Interests").foregroundStyle(themeProvider.secondaryTextForSystemContext(colorScheme))) {
                     if !userInterests.isEmpty {
                         ForEach(userInterests, id: \.self) { interest in
                             HStack {
@@ -1056,11 +1062,11 @@ private struct ProfileView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(interest.title)
                                         .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                        .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                                     
                                     Text(interest.subtitle)
                                         .font(.caption)
-                                        .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                        .foregroundColor(themeProvider.secondaryTextForSystemContext(colorScheme))
                                 }
                                 
                                 Spacer()
@@ -1091,7 +1097,7 @@ private struct ProfileView: View {
                 }
                 
                 // Revolutionary Tab Customization Section
-                Section(header: Text("Navigation").foregroundStyle(themeProvider.theme.gradientTextSecondary)) {
+                Section(header: Text("Navigation").foregroundStyle(themeProvider.secondaryTextForSystemContext(colorScheme))) {
                     NavigationLink {
                         TabManagementView()
                             .environmentObject(authService)
@@ -1105,11 +1111,11 @@ private struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Tab Management")
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                    .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                                 
                                 Text("Customize your tab bar experience")
                                     .font(.caption)
-                                    .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                    .foregroundColor(themeProvider.secondaryTextForSystemContext(colorScheme))
                             }
                             
                             Spacer()
@@ -1141,7 +1147,7 @@ private struct ProfileView: View {
                     }
                 }
                 
-                Section(header: Text("Theme").foregroundStyle(themeProvider.theme.gradientTextSecondary)) {
+                Section(header: Text("Theme").foregroundStyle(themeProvider.secondaryTextForSystemContext(colorScheme))) {
                     HStack {
                         Circle()
                             .fill(themeProvider.theme.accent)
@@ -1150,11 +1156,11 @@ private struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Current Style")
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                             
                             Text("\(themeProvider.style.displayName) • \(themeProvider.accentChoice.displayName)")
                                 .font(.caption)
-                                .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                .foregroundColor(themeProvider.secondaryTextForSystemContext(colorScheme))
                         }
                         
                         Spacer()
@@ -1177,7 +1183,7 @@ private struct ProfileView: View {
                     }
                 }
                 
-                Section(header: Text("Account").foregroundStyle(themeProvider.theme.gradientTextSecondary)) {
+                Section(header: Text("Account").foregroundStyle(themeProvider.secondaryTextForSystemContext(colorScheme))) {
                     Button(role: .destructive) {
                         authService.signOut()
                     } label: {
@@ -1250,11 +1256,11 @@ private struct PersonalizedContentCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(interest.title)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(themeProvider.theme.textPrimary)
+                        .foregroundColor(themeProvider.theme.adaptiveTextOnCard)
                     
                     Text(interest.subtitle)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(themeProvider.theme.textSecondary)
+                        .foregroundColor(themeProvider.theme.adaptiveSecondaryTextOnCard)
                 }
                 
                 Spacer()
@@ -1271,27 +1277,33 @@ private struct PersonalizedContentCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(contentForInterest(interest))
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .foregroundColor(themeProvider.theme.adaptiveTextOnCard)
                     .lineLimit(3)
                 
                 Text(motivationalQuoteForInterest(interest))
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(themeProvider.theme.accent.opacity(0.8))
+                    .foregroundColor(themeProvider.theme.accent)
                     .italic()
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
+        .floatingGlassCard(cornerRadius: 18)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
                     LinearGradient(
-                        colors: [themeProvider.theme.backgroundSecondary, themeProvider.theme.backgroundPrimary],
+                        colors: [
+                            themeProvider.theme.accent.opacity(0.3),
+                            themeProvider.theme.accent.opacity(0.1),
+                            Color.clear
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
-                    )
+                    ),
+                    lineWidth: 1
                 )
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
         )
+        .environmentObject(themeProvider)
     }
     
     private func contentForInterest(_ interest: UserInterest) -> String {
@@ -1506,6 +1518,7 @@ private struct FitnessView: View {
 private struct WealthView: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @EnvironmentObject var authService: AuthenticationService
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         NavigationStack {
@@ -1519,11 +1532,11 @@ private struct WealthView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your Wealth Flow")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                .foregroundColor(themeProvider.textForSystemContext(colorScheme))
                                 .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                             Text("Personalized finance insights")
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                .foregroundColor(themeProvider.secondaryTextForSystemContext(colorScheme))
                                 .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                         }
                         Spacer()

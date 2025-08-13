@@ -399,6 +399,9 @@
 				DEVELOPMENT_TEAM = 5HP4X6G5VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity = {
+					NSAllowsArbitraryLoads = YES;
+				};
 				INFOPLIST_KEY_CFBundleDisplayName = Flowmate;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
