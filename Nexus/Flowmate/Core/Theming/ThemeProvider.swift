@@ -93,7 +93,13 @@ final class ThemeProvider: ObservableObject {
             return
         }
         
-        // Map communication style to theme style
+        // Use user's saved theme preferences if they exist
+        if let themePrefs = prefs.theme {
+            setTheme(style: themePrefs.style, accent: themePrefs.accent)
+            return
+        }
+        
+        // Fallback: Map communication style to theme style (for legacy users)
         let themeStyle: ThemeStyle
         switch prefs.motivation.communicationStyle {
         case .energetic: themeStyle = .energetic
@@ -219,90 +225,90 @@ final class ThemeProvider: ObservableObject {
         switch style {
         case .energetic:
             return Theme(
-                backgroundPrimary: Color(red: 255/255, green: 252/255, blue: 248/255), // Warm pristine white
-                backgroundSecondary: Color(red: 255/255, green: 248/255, blue: 240/255), // Soft peach glow
-                backgroundTertiary: Color(red: 252/255, green: 245/255, blue: 235/255), // Warm cream
-                textPrimary: Color(red: 26/255, green: 32/255, blue: 46/255), // High contrast dark slate
-                textSecondary: Color(red: 71/255, green: 85/255, blue: 105/255), // Medium slate
-                textTertiary: Color(red: 120/255, green: 130/255, blue: 140/255), // Light slate
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .primaryCoral,
-                cardBackground: Color.white,
-                cardText: Color(red: 26/255, green: 32/255, blue: 46/255),
-                border: Color(red: 230/255, green: 235/255, blue: 240/255),
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .professional:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .businessBlue,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.06),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .creative:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .creativePink,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .minimal:
             return Theme(
-                backgroundPrimary: Color.white,
-                backgroundSecondary: Color(red: 246/255, green: 248/255, blue: 250/255),
-                backgroundTertiary: Color(red: 240/255, green: 245/255, blue: 250/255),
-                textPrimary: Color(red: 24/255, green: 24/255, blue: 24/255),
-                textSecondary: Color(red: 120/255, green: 120/255, blue: 120/255),
-                textTertiary: Color(red: 160/255, green: 160/255, blue: 160/255),
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
-                emphasis: Color(red: 200/255, green: 200/255, blue: 200/255), // Clean border
-                cardBackground: Color.white,
-                cardText: Color(red: 24/255, green: 24/255, blue: 24/255),
-                border: Color(red: 230/255, green: 230/255, blue: 230/255),
+                emphasis: Color(UIColor.separator), // Clean border
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.04),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .playful:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .creativePink,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
@@ -327,72 +333,72 @@ final class ThemeProvider: ObservableObject {
             )
         case .vibrancy:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.7),
                 emphasis: .primaryCoral,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.06),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .prism:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.7),
                 emphasis: .creativePink,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .sunset:
             return Theme(
-                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
-                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
-                textPrimary: Color.primary, // Adapts to dark/light mode
-                textSecondary: Color.secondary, // Adapts to dark/light mode
-                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .warmGold,
-                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
-                cardText: Color.primary, // Adapts to dark/light mode
-                border: Color(UIColor.separator), // Adapts to dark/light mode
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.10),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .ocean:
             return Theme(
-                backgroundPrimary: Color(red: 245/255, green: 250/255, blue: 255/255), // Ocean white
-                backgroundSecondary: Color(red: 235/255, green: 245/255, blue: 255/255), // Deep water
-                backgroundTertiary: Color(red: 225/255, green: 240/255, blue: 255/255), // Ocean base
-                textPrimary: Color(red: 15/255, green: 30/255, blue: 45/255), // Deep ocean
-                textSecondary: Color(red: 45/255, green: 70/255, blue: 95/255), // Ocean blue
-                textTertiary: Color(red: 85/255, green: 110/255, blue: 135/255), // Light ocean
+                backgroundPrimary: Color(UIColor.systemBackground),
+                backgroundSecondary: Color(UIColor.secondarySystemBackground),
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground),
+                textPrimary: Color.primary, // Dynamic text that adapts to dark/light mode
+                textSecondary: Color.secondary, // Dynamic secondary text
+                textTertiary: Color(UIColor.tertiaryLabel), // Dynamic tertiary text
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .deepOcean,
-                cardBackground: Color.white,
-                cardText: Color(red: 15/255, green: 30/255, blue: 45/255),
-                border: Color(red: 200/255, green: 220/255, blue: 240/255),
+                cardBackground: Color(UIColor.secondarySystemBackground),
+                cardText: Color.primary, // Dynamic card text
+                border: Color(UIColor.separator),
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
