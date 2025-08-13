@@ -36,8 +36,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2DA4CAAD2E4A020A007FF957"
-               BuildableName = "NexusTests.xctest"
-               BlueprintName = "NexusTests"
+               BuildableName = "FlowmateTests.xctest"
+               BlueprintName = "FlowmateTests"
                ReferencedContainer = "container:Flowmate.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -47,8 +47,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2DA4CAB72E4A020A007FF957"
-               BuildableName = "NexusUITests.xctest"
-               BlueprintName = "NexusUITests"
+               BuildableName = "FlowmateUITests.xctest"
+               BlueprintName = "FlowmateUITests"
                ReferencedContainer = "container:Flowmate.xcodeproj">
             </BuildableReference>
          </TestableReference>
