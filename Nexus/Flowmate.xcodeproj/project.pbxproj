@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2DA4CA992E4A0200007FF957 /* Build configuration list for PBXProject "Nexus" */;
+			buildConfigurationList = 2DA4CA992E4A0200007FF957 /* Build configuration list for PBXProject "Flowmate" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -399,9 +399,6 @@
 				DEVELOPMENT_TEAM = 5HP4X6G5VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppTransportSecurity = {
-					NSAllowsArbitraryLoads = YES;
-				};
 				INFOPLIST_KEY_CFBundleDisplayName = Flowmate;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -528,7 +525,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2DA4CA992E4A0200007FF957 /* Build configuration list for PBXProject "Nexus" */ = {
+		2DA4CA992E4A0200007FF957 /* Build configuration list for PBXProject "Flowmate" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2DA4CAC02E4A020A007FF957 /* Debug */,
