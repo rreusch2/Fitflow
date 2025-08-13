@@ -12,8 +12,8 @@ export async function aiRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(GenerateWorkoutPlanSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const overrides = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const overrides = request.body as any;
 
     try {
       // Get user preferences
@@ -57,13 +57,13 @@ export async function aiRoutes(server: FastifyInstance) {
         .single();
 
       if (error) {
-        server.log.error('Error saving workout plan:', error);
+        server.log.error({ err: error }, 'Error saving workout plan');
         return reply.code(500).send({ error: 'Failed to save workout plan' });
       }
 
       return { plan: savedPlan };
     } catch (error) {
-      server.log.error('Error generating workout plan:', error);
+      server.log.error({ err: error }, 'Error generating workout plan');
       return reply.code(500).send({ error: 'Failed to generate workout plan' });
     }
   });
@@ -74,7 +74,7 @@ export async function aiRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(GenerateMealPlanSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = (request.authUser as { id: string }).id;
     const overrides = request.body;
 
     try {
@@ -119,13 +119,13 @@ export async function aiRoutes(server: FastifyInstance) {
         .single();
 
       if (error) {
-        server.log.error('Error saving meal plan:', error);
+        server.log.error({ err: error }, 'Error saving meal plan');
         return reply.code(500).send({ error: 'Failed to save meal plan' });
       }
 
       return { plan: savedPlan };
     } catch (error) {
-      server.log.error('Error generating meal plan:', error);
+      server.log.error({ err: error }, 'Error generating meal plan');
       return reply.code(500).send({ error: 'Failed to generate meal plan' });
     }
   });

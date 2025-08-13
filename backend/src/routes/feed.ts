@@ -6,8 +6,8 @@ export async function feedRoutes(server: FastifyInstance) {
 
   // Get daily feed items
   server.get('/daily', async (request, reply) => {
-    const userId = request.user!.id;
-    const { date } = request.query as { date?: string };
+    const userId = (request.authUser as { id: string }).id;
+    const { date } = (request.query as any) as { date?: string };
     
     const targetDate = date ? new Date(date) : new Date();
     targetDate.setHours(0, 0, 0, 0);
@@ -25,7 +25,7 @@ export async function feedRoutes(server: FastifyInstance) {
       .order('created_at', { ascending: true });
 
     if (feedError) {
-      server.log.error('Error fetching feed items:', feedError);
+      server.log.error({ err: feedError }, 'Error fetching feed items');
       return reply.code(500).send({ error: 'Failed to fetch feed items' });
     }
 
@@ -51,28 +51,28 @@ export async function feedRoutes(server: FastifyInstance) {
       // Save feed items to database
       const { data: savedFeed, error: saveError } = await server.supabase
         .from('feed_items')
-        .insert(feedItems.map(item => ({
-          ...item,
+        .insert((feedItems as any[]).map((item: any) => ({
+          ...(item as Record<string, any>),
           user_id: userId,
           date: targetDate.toISOString()
         })))
         .select();
 
       if (saveError) {
-        server.log.error('Error saving feed items:', saveError);
+        server.log.error({ err: saveError }, 'Error saving feed items');
         return reply.code(500).send({ error: 'Failed to save feed items' });
       }
 
       return { feed: savedFeed || [] };
     } catch (error) {
-      server.log.error('Error generating daily feed:', error);
+      server.log.error({ err: error }, 'Error generating daily feed');
       return reply.code(500).send({ error: 'Failed to generate daily feed' });
     }
   });
 
   // Manually generate feed (admin/dev endpoint)
   server.post('/generate', async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = (request.authUser as { id: string }).id;
 
     try {
       const { data: preferences } = await server.supabase
@@ -89,21 +89,21 @@ export async function feedRoutes(server: FastifyInstance) {
 
       const { data: savedFeed, error } = await server.supabase
         .from('feed_items')
-        .insert(feedItems.map(item => ({
-          ...item,
+        .insert((feedItems as any[]).map((item: any) => ({
+          ...(item as Record<string, any>),
           user_id: userId,
           date: new Date().toISOString()
         })))
         .select();
 
       if (error) {
-        server.log.error('Error saving generated feed:', error);
+        server.log.error({ err: error }, 'Error saving generated feed');
         return reply.code(500).send({ error: 'Failed to save feed items' });
       }
 
       return { feed: savedFeed || [] };
     } catch (error) {
-      server.log.error('Error generating feed:', error);
+      server.log.error({ err: error }, 'Error generating feed');
       return reply.code(500).send({ error: 'Failed to generate feed' });
     }
   });

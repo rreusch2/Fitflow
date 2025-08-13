@@ -13,8 +13,8 @@ export async function progressRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(CreateProgressEntrySchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const progressData = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const progressData = (request.body as any) || {};
 
     const progressId = randomUUID();
     const now = new Date().toISOString();
@@ -24,14 +24,14 @@ export async function progressRoutes(server: FastifyInstance) {
       .insert({
         id: progressId,
         user_id: userId,
-        ...progressData,
+        ...(progressData as Record<string, any>),
         created_at: now
       })
       .select()
       .single();
 
     if (error) {
-      server.log.error('Error creating progress entry:', error);
+      server.log.error({ err: error }, 'Error creating progress entry');
       return reply.code(500).send({ error: 'Failed to create progress entry' });
     }
 
@@ -40,8 +40,8 @@ export async function progressRoutes(server: FastifyInstance) {
 
   // Get progress entries
   server.get('/', async (request, reply) => {
-    const userId = request.user!.id;
-    const { from, to, limit = 50 } = request.query as { 
+    const userId = (request.authUser as { id: string }).id;
+    const { from, to, limit = 50 } = (request.query as any) as { 
       from?: string; 
       to?: string; 
       limit?: number; 
@@ -64,7 +64,7 @@ export async function progressRoutes(server: FastifyInstance) {
     const { data: entries, error } = await query;
 
     if (error) {
-      server.log.error('Error fetching progress entries:', error);
+      server.log.error({ err: error }, 'Error fetching progress entries');
       return reply.code(500).send({ error: 'Failed to fetch progress entries' });
     }
 
@@ -77,8 +77,8 @@ export async function progressRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(AnalyzeProgressSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const { entries: providedEntries, timeframe } = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const { entries: providedEntries, timeframe } = (request.body as any) || {};
 
     try {
       let entries = providedEntries;
@@ -97,7 +97,7 @@ export async function progressRoutes(server: FastifyInstance) {
           .order('date', { ascending: true });
 
         if (error) {
-          server.log.error('Error fetching entries for analysis:', error);
+          server.log.error({ err: error }, 'Error fetching entries for analysis');
           return reply.code(500).send({ error: 'Failed to fetch progress data' });
         }
 
@@ -131,7 +131,7 @@ export async function progressRoutes(server: FastifyInstance) {
 
       return { analysis };
     } catch (error) {
-      server.log.error('Error analyzing progress:', error);
+      server.log.error({ err: error }, 'Error analyzing progress');
       return reply.code(500).send({ error: 'Failed to analyze progress' });
     }
   });

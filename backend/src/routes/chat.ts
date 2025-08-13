@@ -13,8 +13,8 @@ export async function chatRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(CreateChatSessionSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const { title } = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const { title } = (request.body as any) || {};
 
     const sessionId = randomUUID();
     const now = new Date().toISOString();
@@ -33,7 +33,7 @@ export async function chatRoutes(server: FastifyInstance) {
       .single();
 
     if (error) {
-      server.log.error('Error creating chat session:', error);
+      server.log.error({ err: error }, 'Error creating chat session');
       return reply.code(500).send({ error: 'Failed to create chat session' });
     }
 
@@ -42,7 +42,7 @@ export async function chatRoutes(server: FastifyInstance) {
 
   // Get chat sessions for user
   server.get('/sessions', async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = (request.authUser as { id: string }).id;
 
     const { data: sessions, error } = await server.supabase
       .from('chat_sessions')
@@ -51,7 +51,7 @@ export async function chatRoutes(server: FastifyInstance) {
       .order('last_message_at', { ascending: false });
 
     if (error) {
-      server.log.error('Error fetching chat sessions:', error);
+      server.log.error({ err: error }, 'Error fetching chat sessions');
       return reply.code(500).send({ error: 'Failed to fetch chat sessions' });
     }
 
@@ -60,8 +60,8 @@ export async function chatRoutes(server: FastifyInstance) {
 
   // Get specific chat session with messages
   server.get('/sessions/:sessionId', async (request, reply) => {
-    const userId = request.user!.id;
-    const { sessionId } = request.params as { sessionId: string };
+    const userId = (request.authUser as { id: string }).id;
+    const { sessionId } = (request.params as any) as { sessionId: string };
 
     // Get session
     const { data: session, error: sessionError } = await server.supabase
@@ -72,7 +72,7 @@ export async function chatRoutes(server: FastifyInstance) {
       .single();
 
     if (sessionError) {
-      server.log.error('Error fetching chat session:', sessionError);
+      server.log.error({ err: sessionError }, 'Error fetching chat session');
       return reply.code(404).send({ error: 'Chat session not found' });
     }
 
@@ -84,7 +84,7 @@ export async function chatRoutes(server: FastifyInstance) {
       .order('created_at', { ascending: true });
 
     if (messagesError) {
-      server.log.error('Error fetching chat messages:', messagesError);
+      server.log.error({ err: messagesError }, 'Error fetching chat messages');
       return reply.code(500).send({ error: 'Failed to fetch messages' });
     }
 
@@ -102,9 +102,9 @@ export async function chatRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(CreateChatMessageSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const { sessionId } = request.params as { sessionId: string };
-    const { content } = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const { sessionId } = (request.params as any) as { sessionId: string };
+    const { content } = (request.body as any) || {};
 
     // Verify session belongs to user
     const { data: session, error: sessionError } = await server.supabase
@@ -199,6 +199,7 @@ export async function chatRoutes(server: FastifyInstance) {
         })}\n\n`);
 
         reply.raw.end();
+        return;
       } else {
         // Regular JSON response
         const { data: preferences } = await server.supabase
@@ -232,7 +233,7 @@ export async function chatRoutes(server: FastifyInstance) {
           .single();
 
         if (error) {
-          server.log.error('Error saving assistant message:', error);
+          server.log.error({ err: error }, 'Error saving assistant message');
           return reply.code(500).send({ error: 'Failed to save message' });
         }
 
@@ -248,7 +249,7 @@ export async function chatRoutes(server: FastifyInstance) {
         return { message };
       }
     } catch (error) {
-      server.log.error('Error in chat completion:', error);
+      server.log.error({ err: error }, 'Error in chat completion');
       return reply.code(500).send({ error: 'Failed to process message' });
     }
   });

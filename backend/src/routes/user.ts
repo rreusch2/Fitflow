@@ -5,7 +5,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 export async function userRoutes(server: FastifyInstance) {
   // Get current user profile
   server.get('/me', async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = (request.authUser as { id: string }).id;
 
     const { data: user, error } = await server.supabase
       .from('users')
@@ -38,7 +38,7 @@ export async function userRoutes(server: FastifyInstance) {
       .single();
 
     if (error) {
-      server.log.error('Error fetching user:', error);
+      server.log.error({ err: error }, 'Error fetching user');
       return reply.code(500).send({ error: 'Failed to fetch user data' });
     }
 
@@ -53,7 +53,7 @@ export async function userRoutes(server: FastifyInstance) {
 
   // Get user preferences
   server.get('/preferences', async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = (request.authUser as { id: string }).id;
 
     const { data: preferences, error } = await server.supabase
       .from('user_preferences')
@@ -61,8 +61,8 @@ export async function userRoutes(server: FastifyInstance) {
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // Not found is OK
-      server.log.error('Error fetching preferences:', error);
+    if (error && (error as any).code !== 'PGRST116') { // Not found is OK
+      server.log.error({ err: error }, 'Error fetching preferences');
       return reply.code(500).send({ error: 'Failed to fetch preferences' });
     }
 
@@ -75,22 +75,22 @@ export async function userRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(UpdateUserPreferencesSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const preferencesData = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const preferencesData = (request.body as any) || {};
 
     // Upsert preferences
     const { data: preferences, error } = await server.supabase
       .from('user_preferences')
       .upsert({
         user_id: userId,
-        ...preferencesData,
+        ...(preferencesData as Record<string, any>),
         updated_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (error) {
-      server.log.error('Error updating preferences:', error);
+      server.log.error({ err: error }, 'Error updating preferences');
       return reply.code(500).send({ error: 'Failed to update preferences' });
     }
 

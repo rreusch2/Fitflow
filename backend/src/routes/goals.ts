@@ -6,8 +6,8 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 export async function goalsRoutes(server: FastifyInstance) {
   // Get all goals for user
   server.get('/', async (request, reply) => {
-    const userId = request.user!.id;
-    const { completed } = request.query as { completed?: boolean };
+    const userId = (request.authUser as { id: string }).id;
+    const { completed } = (request.query as any) as { completed?: boolean };
 
     let query = server.supabase
       .from('goals')
@@ -22,7 +22,7 @@ export async function goalsRoutes(server: FastifyInstance) {
     const { data: goals, error } = await query;
 
     if (error) {
-      server.log.error('Error fetching goals:', error);
+      server.log.error({ err: error }, 'Error fetching goals');
       return reply.code(500).send({ error: 'Failed to fetch goals' });
     }
 
@@ -35,8 +35,8 @@ export async function goalsRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(CreateGoalSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const goalData = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const goalData = (request.body as any) || {};
 
     const goalId = randomUUID();
     const now = new Date().toISOString();
@@ -46,7 +46,7 @@ export async function goalsRoutes(server: FastifyInstance) {
       .insert({
         id: goalId,
         user_id: userId,
-        ...goalData,
+        ...(goalData as Record<string, any>),
         current_value: 0,
         is_completed: false,
         created_at: now
@@ -55,7 +55,7 @@ export async function goalsRoutes(server: FastifyInstance) {
       .single();
 
     if (error) {
-      server.log.error('Error creating goal:', error);
+      server.log.error({ err: error }, 'Error creating goal');
       return reply.code(500).send({ error: 'Failed to create goal' });
     }
 
@@ -64,8 +64,8 @@ export async function goalsRoutes(server: FastifyInstance) {
 
   // Get specific goal
   server.get('/:id', async (request, reply) => {
-    const userId = request.user!.id;
-    const { id } = request.params as { id: string };
+    const userId = (request.authUser as { id: string }).id;
+    const { id } = (request.params as any) as { id: string };
 
     const { data: goal, error } = await server.supabase
       .from('goals')
@@ -75,7 +75,7 @@ export async function goalsRoutes(server: FastifyInstance) {
       .single();
 
     if (error) {
-      server.log.error('Error fetching goal:', error);
+      server.log.error({ err: error }, 'Error fetching goal');
       return reply.code(404).send({ error: 'Goal not found' });
     }
 
@@ -88,20 +88,20 @@ export async function goalsRoutes(server: FastifyInstance) {
       body: zodToJsonSchema(UpdateGoalSchema)
     }
   }, async (request, reply) => {
-    const userId = request.user!.id;
-    const { id } = request.params as { id: string };
-    const updates = request.body;
+    const userId = (request.authUser as { id: string }).id;
+    const { id } = (request.params as any) as { id: string };
+    const updates = (request.body as any) || {};
 
     const { data: goal, error } = await server.supabase
       .from('goals')
-      .update(updates)
+      .update(updates as Record<string, any>)
       .eq('id', id)
       .eq('user_id', userId)
       .select()
       .single();
 
     if (error) {
-      server.log.error('Error updating goal:', error);
+      server.log.error({ err: error }, 'Error updating goal');
       return reply.code(500).send({ error: 'Failed to update goal' });
     }
 
@@ -110,8 +110,8 @@ export async function goalsRoutes(server: FastifyInstance) {
 
   // Delete goal
   server.delete('/:id', async (request, reply) => {
-    const userId = request.user!.id;
-    const { id } = request.params as { id: string };
+    const userId = (request.authUser as { id: string }).id;
+    const { id } = (request.params as any) as { id: string };
 
     const { error } = await server.supabase
       .from('goals')
@@ -120,7 +120,7 @@ export async function goalsRoutes(server: FastifyInstance) {
       .eq('user_id', userId);
 
     if (error) {
-      server.log.error('Error deleting goal:', error);
+      server.log.error({ err: error }, 'Error deleting goal');
       return reply.code(500).send({ error: 'Failed to delete goal' });
     }
 

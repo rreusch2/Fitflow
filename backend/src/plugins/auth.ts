@@ -3,7 +3,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 
 declare module 'fastify' {
   interface FastifyRequest {
-    user?: {
+    authUser?: {
       id: string;
       email: string;
       subscription_tier: string;
@@ -13,8 +13,8 @@ declare module 'fastify' {
 
 export const authPlugin = fp(async (fastify) => {
   // Only decorate if not already present
-  if (!fastify.hasRequestDecorator('user')) {
-    fastify.decorateRequest('user', null);
+  if (!fastify.hasRequestDecorator('authUser')) {
+    fastify.decorateRequest('authUser', null);
   }
 
   fastify.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -52,9 +52,9 @@ export const authPlugin = fp(async (fastify) => {
         return;
       }
 
-      request.user = userData;
+      request.authUser = userData;
     } catch (error) {
-      fastify.log.error('Auth error:', error);
+      fastify.log.error({ err: error }, 'Auth error');
       reply.code(401).send({ error: 'Authentication failed' });
     }
   });
