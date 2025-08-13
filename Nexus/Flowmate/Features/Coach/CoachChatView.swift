@@ -12,121 +12,10 @@ struct CoachChatView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(messages) { msg in
-                                MessageBubbleView(message: msg)
-                                    .id(msg.id)
-                                    .padding(.horizontal)
-                            }
-                            
-                            // Streaming message bubble
-                            if isStreaming && !currentStreamingMessage.isEmpty {
-                                MessageBubbleView(message: ChatBubble(role: .assistant, text: currentStreamingMessage, isStreaming: true))
-                                    .id("streaming")
-                                    .padding(.horizontal)
-                            }
-                            
-                            // Typing indicator
-                            if isStreaming && currentStreamingMessage.isEmpty {
-                                TypingIndicatorView()
-                                    .id("typing")
-                                    .padding(.horizontal)
-                            }
-                            .padding(.vertical)
-                        }
-                    }
-                    .onChange(of: messages.count) { _ in
-                        if let last = messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
-                    }
-                }
-
-                if let error { Text(error).foregroundColor(.red).padding(.vertical, 4) }
-
-                // Quick actions - now populate input instead of sending directly
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        QuickActionButton(title: "Workout Plan", systemImage: "figure.run", gradient: LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                            populateInput("Create a personalized workout plan for me based on my fitness goals and current level")
-                        }
-                        QuickActionButton(title: "Meal Plan", systemImage: "fork.knife", gradient: LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                            populateInput("Design a healthy meal plan that aligns with my fitness goals and dietary preferences")
-                        }
-                        QuickActionButton(title: "Analyze Progress", systemImage: "chart.line.uptrend.xyaxis", gradient: LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                            populateInput("Analyze my recent progress and provide insights on my fitness journey")
-                        }
-                        QuickActionButton(title: "Daily Tips", systemImage: "lightbulb.fill", gradient: LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                            populateInput("Give me some motivational fitness tips for today")
-                        }
-                        QuickActionButton(title: "Form Check", systemImage: "figure.strengthtraining.traditional", gradient: LinearGradient(colors: [.indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                            populateInput("Help me understand proper form for my exercises")
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                }
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 8)
-
-                // Enhanced input area
-                VStack(spacing: 0) {
-                    HStack(alignment: .bottom, spacing: 12) {
-                        VStack(spacing: 0) {
-                            TextField("Ask your coach anything...", text: $input, axis: .vertical)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                        .fill(.ultraThinMaterial)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                                .stroke(isInputFocused ? .accent : .primary.opacity(0.1), lineWidth: isInputFocused ? 2 : 1)
-                                        )
-                                )
-                                .focused($isInputFocused)
-                                .disabled(isSending || isStreaming)
-                                .lineLimit(1...6)
-                                .font(.system(size: 16))
-                        }
-                        
-                        Button {
-                            Task { await sendWithStreaming() }
-                        } label: {
-                            ZStack {
-                                if isSending || isStreaming {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "paperplane.fill")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(
-                                        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isStreaming
-                                        ? .gray.opacity(0.3)
-                                        : LinearGradient(colors: [.accentColor, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    )
-                            )
-                            .scaleEffect((isSending || isStreaming) ? 0.95 : 1.0)
-                        }
-                        .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isStreaming)
-                        .animation(.easeInOut(duration: 0.2), value: isSending || isStreaming)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, max(12, UIApplication.shared.keyWindow?.safeAreaInsets.bottom ?? 0))
-                }
-                .background(
-                    .regularMaterial,
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
-                .animation(.easeInOut(duration: 0.3), value: isInputFocused)
+                messagesListView
+                errorView
+                quickActionsView
+                inputAreaView
             }
             .navigationTitle("Coach")
             .toolbar {
@@ -138,10 +27,191 @@ struct CoachChatView: View {
             }
             .onAppear {
                 if messages.isEmpty {
-                    messages.append(ChatBubble(role: .assistant, text: "Hey! I’m your AI coach. Ask me anything or use the quick actions below."))
+                    messages.append(ChatBubble(role: .assistant, text: "Hey! I'm your AI coach. Ask me anything or use the quick actions below."))
                 }
             }
         }
+    }
+    
+    private var messagesListView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(messages) { msg in
+                        MessageBubbleView(message: msg)
+                            .id(msg.id)
+                            .padding(.horizontal)
+                    }
+                    
+                    // Streaming message bubble
+                    if isStreaming && !currentStreamingMessage.isEmpty {
+                        MessageBubbleView(message: ChatBubble(role: .assistant, text: currentStreamingMessage, isStreaming: true))
+                            .id("streaming")
+                            .padding(.horizontal)
+                    }
+                    
+                    // Typing indicator
+                    if isStreaming && currentStreamingMessage.isEmpty {
+                        TypingIndicatorView()
+                            .id("typing")
+                            .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
+            }
+            .onChange(of: messages.count) { _ in
+                if let last = messages.last { 
+                    withAnimation { 
+                        proxy.scrollTo(last.id, anchor: .bottom) 
+                    } 
+                }
+            }
+        }
+    }
+    
+    private var errorView: some View {
+        Group {
+            if let error {
+                Text(error)
+                    .foregroundColor(.red)
+                    .padding(.vertical, 4)
+            }
+        }
+    }
+    
+    private var quickActionsView: some View {
+
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                quickActionButton1
+                quickActionButton2
+                quickActionButton3
+                quickActionButton4
+                quickActionButton5
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 8)
+    }
+    
+    private var quickActionButton1: some View {
+        QuickActionButton(
+            title: "Workout Plan", 
+            systemImage: "figure.run", 
+            gradient: LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
+        ) {
+            populateInput("Create a personalized workout plan for me based on my fitness goals and current level")
+        }
+    }
+    
+    private var quickActionButton2: some View {
+        QuickActionButton(
+            title: "Meal Plan", 
+            systemImage: "fork.knife", 
+            gradient: LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+        ) {
+            populateInput("Design a healthy meal plan that aligns with my fitness goals and dietary preferences")
+        }
+    }
+    
+    private var quickActionButton3: some View {
+        QuickActionButton(
+            title: "Analyze Progress", 
+            systemImage: "chart.line.uptrend.xyaxis", 
+            gradient: LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+        ) {
+            populateInput("Analyze my recent progress and provide insights on my fitness journey")
+        }
+    }
+    
+    private var quickActionButton4: some View {
+        QuickActionButton(
+            title: "Daily Tips", 
+            systemImage: "lightbulb.fill", 
+            gradient: LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+        ) {
+            populateInput("Give me some motivational fitness tips for today")
+        }
+    }
+    
+    private var quickActionButton5: some View {
+        QuickActionButton(
+            title: "Form Check", 
+            systemImage: "figure.strengthtraining.traditional", 
+            gradient: LinearGradient(colors: [.indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+        ) {
+            populateInput("Help me understand proper form for my exercises")
+        }
+    }
+    
+    private var inputAreaView: some View {
+
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 12) {
+                inputTextField
+                sendButton
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, max(12, UIApplication.shared.keyWindow?.safeAreaInsets.bottom ?? 0))
+        }
+        .background(
+            .regularMaterial,
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .animation(.easeInOut(duration: 0.3), value: isInputFocused)
+    }
+    
+    private var inputTextField: some View {
+        VStack(spacing: 0) {
+            TextField("Ask your coach anything...", text: $input, axis: .vertical)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(isInputFocused ? .accent : .primary.opacity(0.1), lineWidth: isInputFocused ? 2 : 1)
+                        )
+                )
+                .focused($isInputFocused)
+                .disabled(isSending || isStreaming)
+                .lineLimit(1...6)
+                .font(.system(size: 16))
+        }
+    }
+    
+    private var sendButton: some View {
+        Button {
+            Task { await sendWithStreaming() }
+        } label: {
+            ZStack {
+                if isSending || isStreaming {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .tint(.white)
+                } else {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .background(
+                Circle()
+                    .fill(
+                        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isStreaming
+                        ? LinearGradient(colors: [.gray.opacity(0.3), .gray.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [.accentColor, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+            )
+            .scaleEffect((isSending || isStreaming) ? 0.95 : 1.0)
+        }
+        .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isStreaming)
+        .animation(.easeInOut(duration: 0.2), value: isSending || isStreaming)
     }
 
     private func populateInput(_ prompt: String) {

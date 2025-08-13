@@ -1365,12 +1365,12 @@ private struct FitnessView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Your Fitness Flow")
                                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .foregroundColor(themeProvider.theme.gradientTextPrimary)
+                                    .foregroundColor(themeProvider.theme.textPrimary)
                                     .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                     
                                 Text(personalizedSubtitle)
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(themeProvider.theme.gradientTextSecondary)
+                                    .foregroundColor(themeProvider.theme.textSecondary)
                                     .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
                             }
                             

@@ -237,36 +237,36 @@ final class ThemeProvider: ObservableObject {
             )
         case .professional:
             return Theme(
-                backgroundPrimary: Color(red: 249/255, green: 250/255, blue: 252/255), // Cool pristine white
-                backgroundSecondary: Color(red: 244/255, green: 247/255, blue: 251/255), // Light blue-gray
-                backgroundTertiary: Color(red: 240/255, green: 244/255, blue: 248/255), // Soft blue
-                textPrimary: Color(red: 30/255, green: 41/255, blue: 59/255), // Professional navy
-                textSecondary: Color(red: 71/255, green: 85/255, blue: 105/255), // Medium slate
-                textTertiary: Color(red: 100/255, green: 116/255, blue: 139/255), // Lighter slate
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .businessBlue,
-                cardBackground: Color.white,
-                cardText: Color(red: 30/255, green: 41/255, blue: 59/255),
-                border: Color(red: 220/255, green: 230/255, blue: 240/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.06),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .creative:
             return Theme(
-                backgroundPrimary: Color(red: 255/255, green: 251/255, blue: 254/255), // Ethereal white
-                backgroundSecondary: Color(red: 252/255, green: 246/255, blue: 252/255), // Soft lavender mist
-                backgroundTertiary: Color(red: 248/255, green: 240/255, blue: 248/255), // Purple tint
-                textPrimary: Color(red: 26/255, green: 32/255, blue: 46/255), // High contrast dark
-                textSecondary: Color(red: 71/255, green: 85/255, blue: 105/255), // Medium slate
-                textTertiary: Color(red: 120/255, green: 130/255, blue: 140/255), // Light slate
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .creativePink,
-                cardBackground: Color.white,
-                cardText: Color(red: 26/255, green: 32/255, blue: 46/255),
-                border: Color(red: 235/255, green: 225/255, blue: 235/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
@@ -291,18 +291,18 @@ final class ThemeProvider: ObservableObject {
             )
         case .playful:
             return Theme(
-                backgroundPrimary: Color(red: 255/255, green: 253/255, blue: 250/255), // Vibrant white
-                backgroundSecondary: Color(red: 255/255, green: 250/255, blue: 245/255), // Warm peach tint
-                backgroundTertiary: Color(red: 255/255, green: 245/255, blue: 235/255), // Peach
-                textPrimary: Color(red: 26/255, green: 32/255, blue: 46/255), // High contrast dark
-                textSecondary: Color(red: 71/255, green: 85/255, blue: 105/255), // Medium slate
-                textTertiary: Color(red: 120/255, green: 130/255, blue: 140/255), // Light slate
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .creativePink,
-                cardBackground: Color.white,
-                cardText: Color(red: 26/255, green: 32/255, blue: 46/255),
-                border: Color(red: 240/255, green: 225/255, blue: 210/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
@@ -327,54 +327,54 @@ final class ThemeProvider: ObservableObject {
             )
         case .vibrancy:
             return Theme(
-                backgroundPrimary: Color(red: 250/255, green: 250/255, blue: 255/255), // Ultra-clean white
-                backgroundSecondary: Color(red: 245/255, green: 248/255, blue: 255/255), // Soft tint
-                backgroundTertiary: Color(red: 240/255, green: 245/255, blue: 255/255), // Vibrant base
-                textPrimary: Color(red: 20/255, green: 25/255, blue: 35/255), // Ultra-dark
-                textSecondary: Color(red: 60/255, green: 70/255, blue: 90/255), // Medium contrast
-                textTertiary: Color(red: 100/255, green: 115/255, blue: 135/255), // Light contrast
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.7),
                 emphasis: .primaryCoral,
-                cardBackground: Color.white,
-                cardText: Color(red: 20/255, green: 25/255, blue: 35/255),
-                border: Color(red: 220/255, green: 230/255, blue: 255/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.06),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .prism:
             return Theme(
-                backgroundPrimary: Color(red: 252/255, green: 250/255, blue: 255/255), // Prism white
-                backgroundSecondary: Color(red: 248/255, green: 245/255, blue: 255/255), // Rainbow tint
-                backgroundTertiary: Color(red: 245/255, green: 240/255, blue: 255/255), // Spectrum base
-                textPrimary: Color(red: 25/255, green: 20/255, blue: 40/255), // Deep purple-black
-                textSecondary: Color(red: 65/255, green: 60/255, blue: 85/255), // Purple-gray
-                textTertiary: Color(red: 105/255, green: 100/255, blue: 125/255), // Light purple
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.7),
                 emphasis: .creativePink,
-                cardBackground: Color.white,
-                cardText: Color(red: 25/255, green: 20/255, blue: 40/255),
-                border: Color(red: 225/255, green: 220/255, blue: 245/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.08),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
             )
         case .sunset:
             return Theme(
-                backgroundPrimary: Color(red: 255/255, green: 251/255, blue: 245/255), // Warm sunset white
-                backgroundSecondary: Color(red: 255/255, green: 247/255, blue: 235/255), // Golden glow
-                backgroundTertiary: Color(red: 255/255, green: 243/255, blue: 225/255), // Sunset base
-                textPrimary: Color(red: 40/255, green: 25/255, blue: 15/255), // Warm dark
-                textSecondary: Color(red: 80/255, green: 60/255, blue: 45/255), // Sunset brown
-                textTertiary: Color(red: 120/255, green: 100/255, blue: 85/255), // Light brown
+                backgroundPrimary: Color(UIColor.systemBackground), // Adapts to dark/light mode
+                backgroundSecondary: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                backgroundTertiary: Color(UIColor.tertiarySystemBackground), // Adapts to dark/light mode
+                textPrimary: Color.primary, // Adapts to dark/light mode
+                textSecondary: Color.secondary, // Adapts to dark/light mode
+                textTertiary: Color(UIColor.tertiaryLabel), // Adapts to dark/light mode
                 accent: accentColor,
                 accentSecondary: accentColor.opacity(0.8),
                 emphasis: .warmGold,
-                cardBackground: Color.white,
-                cardText: Color(red: 40/255, green: 25/255, blue: 15/255),
-                border: Color(red: 240/255, green: 220/255, blue: 200/255),
+                cardBackground: Color(UIColor.secondarySystemBackground), // Adapts to dark/light mode
+                cardText: Color.primary, // Adapts to dark/light mode
+                border: Color(UIColor.separator), // Adapts to dark/light mode
                 shadow: Color.black.opacity(0.10),
                 accentGradient: accentGradient,
                 isGradientAccent: isGradientAccent
@@ -459,15 +459,14 @@ extension Theme {
             Color.white.opacity(0.9)
     }
     
-    // Text color for gradient overlays - will be computed in view context with system awareness
-    // NOTE: These should be used via ThemeProvider methods that can access ColorScheme
+    // Text color for gradient overlays - use dynamic colors that adapt to system appearance
     var gradientTextPrimary: Color {
-        // Fallback - prefer using textForSystemContext() in views
-        backgroundPrimary.luminance > 0.5 ? Color(red: 26/255, green: 32/255, blue: 46/255) : Color.white
+        // Use dynamic color that adapts to system dark/light mode
+        Color.primary
     }
     
     var gradientTextSecondary: Color {
-        // Fallback - prefer using secondaryTextForSystemContext() in views  
-        backgroundPrimary.luminance > 0.5 ? Color(red: 71/255, green: 85/255, blue: 105/255) : Color.white.opacity(0.85)
+        // Use dynamic color that adapts to system dark/light mode
+        Color.secondary
     }
 }
