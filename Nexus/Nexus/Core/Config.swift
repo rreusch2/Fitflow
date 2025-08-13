@@ -134,7 +134,7 @@ struct Config {
         var baseURL: String {
             switch self {
             case .development:
-                return "http://127.0.0.1:3001"
+                return "https://fitflow-production.up.railway.app"
             case .staging:
                 return "https://staging-api.fitflow.app"
             case .production:
