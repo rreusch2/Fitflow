@@ -7,6 +7,7 @@ import { feedRoutes } from './feed';
 import { progressRoutes } from './progress';
 import { goalsRoutes } from './goals';
 import { publicRoutes } from './public';
+import { financeRoutes } from './finance';
 
 export async function setupRoutes(server: FastifyInstance) {
   // API versioning prefix
@@ -19,5 +20,6 @@ export async function setupRoutes(server: FastifyInstance) {
     await server.register(progressRoutes, { prefix: '/v1/progress' });
     await server.register(goalsRoutes, { prefix: '/v1/goals' });
     await server.register(publicRoutes, { prefix: '/v1/public' });
+    await server.register(financeRoutes, { prefix: '/v1' });
   });
 }

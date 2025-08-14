@@ -20,7 +20,16 @@ struct ContentView: View {
                 if authService.currentUser?.hasCompletedOnboarding == true {
                     MainTabView()
                         .environmentObject(themeProvider)
-                        .onAppear { themeProvider.applyTheme(for: authService.currentUser) }
+                        .onAppear { 
+                            // Apply theme after a small delay to ensure user preferences are loaded
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                themeProvider.applyTheme(for: authService.currentUser)
+                            }
+                        }
+                        .onChange(of: authService.currentUser) { user in
+                            // Reapply theme when user data changes
+                            themeProvider.applyTheme(for: user)
+                        }
                 } else {
                     OnboardingContainerView()
                         .environmentObject(themeProvider)

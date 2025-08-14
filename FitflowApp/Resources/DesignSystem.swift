@@ -29,19 +29,25 @@ extension Color {
     static let errorRed = Color(red: 239/255, green: 68/255, blue: 68/255)
     static let infoBlue = Color(red: 59/255, green: 130/255, blue: 246/255)
     
-    // Neutral Colors
-    static let textPrimary = Color(red: 17/255, green: 24/255, blue: 39/255) // #111827
-    static let textSecondary = Color(red: 75/255, green: 85/255, blue: 99/255) // #4B5563
-    static let textTertiary = Color(red: 156/255, green: 163/255, blue: 175/255) // #9CA3AF
+    // Dynamic Colors that adapt to light/dark mode
+    static let textPrimary = Color.primary
+    static let textSecondary = Color.secondary
+    static let textTertiary = Color(UIColor.tertiaryLabel)
     
-    static let backgroundPrimary = Color(red: 249/255, green: 250/255, blue: 251/255) // #F9FAFB
-    static let backgroundSecondary = Color.white
-    static let backgroundTertiary = Color(red: 243/255, green: 244/255, blue: 246/255) // #F3F4F6
+    static let backgroundPrimary = Color(UIColor.systemBackground)
+    static let backgroundSecondary = Color(UIColor.secondarySystemBackground)
+    static let backgroundTertiary = Color(UIColor.tertiarySystemBackground)
     
-    static let borderLight = Color(red: 229/255, green: 231/255, blue: 235/255) // #E5E7EB
-    static let borderMedium = Color(red: 209/255, green: 213/255, blue: 219/255) // #D1D5DB
+    static let borderLight = Color(UIColor.separator)
+    static let borderMedium = Color(UIColor.opaqueSeparator)
     
-    // Dark Mode Colors
+    // Static Light Mode Colors (for reference/fallback)
+    static let lightTextPrimary = Color(red: 17/255, green: 24/255, blue: 39/255) // #111827
+    static let lightTextSecondary = Color(red: 75/255, green: 85/255, blue: 99/255) // #4B5563
+    static let lightBackgroundPrimary = Color(red: 249/255, green: 250/255, blue: 251/255) // #F9FAFB
+    static let lightBackgroundSecondary = Color.white
+    
+    // Static Dark Mode Colors (for reference/fallback)
     static let darkBackgroundPrimary = Color(red: 17/255, green: 24/255, blue: 39/255)
     static let darkBackgroundSecondary = Color(red: 31/255, green: 41/255, blue: 55/255)
     static let darkTextPrimary = Color.white

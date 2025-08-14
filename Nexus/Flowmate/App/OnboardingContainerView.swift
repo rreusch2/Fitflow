@@ -13,11 +13,11 @@ struct OnboardingContainerView: View {
     
     @State private var step: Int = 0
     @State private var fitnessPrefs = FitnessPreferences(
-        level: .beginner,
+        level: FitnessLevel.beginner,
         preferredActivities: [],
         availableEquipment: [],
-        workoutDuration: .short,
-        workoutFrequency: .light,
+        workoutDuration: WorkoutDuration.short,
+        workoutFrequency: WorkoutFrequency.light,
         limitations: []
     )
     @State private var nutritionPrefs = NutritionPreferences(

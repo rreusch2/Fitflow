@@ -8,6 +8,11 @@ struct CoachChatView: View {
     @State private var error: String?
     @State private var currentStreamingMessage = ""
     @FocusState private var isInputFocused: Bool
+    
+    // Memory feature states
+    @State private var showMemoryPrompt = false
+    @State private var suggestedMemory: SuggestedMemory?
+    @StateObject private var memoryService = MemoryService.shared
 
     var body: some View {
         NavigationStack {
@@ -18,6 +23,17 @@ struct CoachChatView: View {
                 inputAreaView
             }
             .navigationTitle("Coach")
+            .sheet(isPresented: $showMemoryPrompt) {
+                if let memory = suggestedMemory {
+                    MemorySavePrompt(isPresented: $showMemoryPrompt, suggestedMemory: memory) { savedMemory in
+                        Task {
+                            await memoryService.saveMemory(savedMemory)
+                            // Show success feedback
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        }
+                    }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -258,6 +274,13 @@ struct CoachChatView: View {
         let words = fullMessage.components(separatedBy: " ")
         var streamedText = ""
         
+        // Check for memory moment after streaming completes
+        defer {
+            if let lastUserMessage = messages.last(where: { $0.role == .user })?.text {
+                checkForMemoryMoment(prompt: lastUserMessage, response: fullMessage)
+            }
+        }
+        
         for (index, word) in words.enumerated() {
             if index > 0 { streamedText += " " }
             streamedText += word
@@ -275,6 +298,17 @@ struct CoachChatView: View {
             messages.append(ChatBubble(role: .assistant, text: fullMessage))
             isStreaming = false
             currentStreamingMessage = ""
+        }
+    }
+    
+    private func checkForMemoryMoment(prompt: String, response: String) {
+        // Use the memory service to analyze if this is a memory-worthy moment
+        if let suggestion = MemoryService.shared.analyzeForMemoryMoment(prompt: prompt, response: response) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                suggestedMemory = suggestion
+                showMemoryPrompt = true
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
         }
     }
 

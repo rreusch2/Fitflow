@@ -65,7 +65,7 @@ enum SubscriptionTier: String, Codable, CaseIterable {
 
 // MARK: - User Preferences
 struct UserPreferences: Codable {
-    let fitness: FitnessPreferences
+    var fitness: FitnessPreferences
     let nutrition: NutritionPreferences
     let motivation: MotivationPreferences
     let business: BusinessPreferences?

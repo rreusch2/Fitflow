@@ -93,25 +93,8 @@ final class ThemeProvider: ObservableObject {
             return
         }
         
-        // Use user's saved theme preferences if they exist
-        if let themePrefs = prefs.theme {
-            setTheme(style: themePrefs.style, accent: themePrefs.accent)
-            return
-        }
-        
-        // Fallback: Map communication style to theme style (for legacy users)
-        let themeStyle: ThemeStyle
-        switch prefs.motivation.communicationStyle {
-        case .energetic: themeStyle = .energetic
-        case .calm: themeStyle = .minimal
-        case .tough: themeStyle = .professional
-        case .supportive: themeStyle = .playful
-        case .scientific: themeStyle = .professional
-        case .humorous: themeStyle = .creative
-        case .dark: themeStyle = .dark
-        }
-        
-        setTheme(style: themeStyle, accent: .coral)
+        // Use user's saved theme preferences (they always exist in new onboarding)
+        setTheme(style: prefs.theme.style, accent: prefs.theme.accent)
     }
     
     func setTheme(style: ThemeStyle, accent: AccentColorChoice) {

@@ -16,9 +16,12 @@ class DatabaseService: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     
-    // In a real implementation, this would be the Supabase client
-    // For now, we'll create a mock implementation that can be easily replaced
-    private var supabaseClient: SupabaseClient?
+    // Supabase REST base
+    private let supabaseBaseURL = URL(string: Config.Supabase.url)!
+    private var restBaseURL: URL { supabaseBaseURL.appendingPathComponent("rest/v1") }
+    private var anonKey: String { Config.Supabase.anonKey }
+    private var authToken: String?
+    private var authBaseURL: URL { supabaseBaseURL.appendingPathComponent("auth/v1") }
     
     init() {
         initialize()
@@ -27,13 +30,112 @@ class DatabaseService: ObservableObject {
     // MARK: - Initialization
     
     func initialize() {
-        // Initialize Supabase client
-        // supabaseClient = SupabaseClient(supabaseURL: Config.Supabase.url, supabaseKey: Config.Supabase.anonKey)
-        
-        // For now, simulate connection
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.isConnected = true
+        // Basic reachability check to Supabase REST (non-blocking)
+        let url = restBaseURL.appendingPathComponent("users")
+        var comps = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        comps.queryItems = [URLQueryItem(name: "select", value: "id"), URLQueryItem(name: "limit", value: "1")]
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(authToken ?? anonKey)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { _, resp, _ in
+            DispatchQueue.main.async {
+                self.isConnected = (resp as? HTTPURLResponse)?.statusCode ?? 0 > 0
+            }
+        }.resume()
+    }
+
+    // MARK: - Supabase REST helpers
+    
+    private func restRequest(path: String,
+                             method: String,
+                             query: [URLQueryItem] = [],
+                             body: Data? = nil,
+                             prefer: String? = nil) async throws -> Data {
+        var components = URLComponents(url: restBaseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty { components.queryItems = query }
+        var req = URLRequest(url: components.url!)
+        req.httpMethod = method
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(authToken ?? anonKey)", forHTTPHeaderField: "Authorization")
+        if let prefer = prefer { req.setValue(prefer, forHTTPHeaderField: "Prefer") }
+        req.httpBody = body
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let text = String(data: data, encoding: .utf8) ?? ""
+            throw DatabaseError.unknownError("Supabase REST error (\(code)): \(text)")
         }
+        return data
+    }
+    
+    func rpc(_ name: String, payload: [String: Any]) async throws -> Data {
+        let url = supabaseBaseURL.appendingPathComponent("rest/v1/rpc/\(name)")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(authToken ?? anonKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let text = String(data: data, encoding: .utf8) ?? ""
+            throw DatabaseError.unknownError("Supabase RPC error (\(code)): \(text)")
+        }
+        return data
+    }
+    
+    // MARK: - GoTrue Auth (REST)
+    
+    struct AuthSession: Decodable {
+        let access_token: String?
+        let refresh_token: String?
+        let user: AuthUser?
+    }
+    
+    struct AuthUser: Decodable {
+        let id: String
+        let email: String?
+    }
+    
+    private func authRequest(path: String, body: [String: Any]) async throws -> AuthSession {
+        let url = authBaseURL.appendingPathComponent(path)
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let text = String(data: data, encoding: .utf8) ?? ""
+            throw DatabaseError.authenticationFailed("Auth error (\(code)): \(text)")
+        }
+        return try JSONDecoder().decode(AuthSession.self, from: data)
+    }
+    
+    func authSignUp(email: String, password: String) async throws -> AuthSession {
+        try await authRequest(path: "signup", body: ["email": email, "password": password])
+    }
+    
+    func authSignIn(email: String, password: String) async throws -> AuthSession {
+        try await authRequest(path: "token?grant_type=password", body: ["email": email, "password": password])
+    }
+    
+    func authRefresh(refreshToken: String) async throws -> AuthSession {
+        try await authRequest(path: "token?grant_type=refresh_token", body: ["refresh_token": refreshToken])
+    }
+    
+    // MARK: - Auth Token Management
+    
+    func setAuthToken(_ token: String) {
+        self.authToken = token
+    }
+    func clearAuthToken() {
+        self.authToken = nil
     }
     
     // MARK: - User Management
@@ -41,46 +143,47 @@ class DatabaseService: ObservableObject {
     func createUser(_ user: User) async throws {
         isLoading = true
         defer { isLoading = false }
-        
-        // Simulate API call delay
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-        
-        // In real implementation:
-        // try await supabaseClient.from(Config.Supabase.usersTable).insert(user).execute()
-        
-        // Mock implementation - just validate the user data
-        if user.email.isEmpty {
-            throw DatabaseError.invalidData("Email cannot be empty")
-        }
-        
-        // Simulate potential duplicate email error
-        if user.email == "duplicate@test.com" {
-            throw DatabaseError.duplicateEntry("User with this email already exists")
-        }
+        // Insert into public.users via PostgREST
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode([user])
+        _ = try await restRequest(
+            path: Config.Supabase.usersTable,
+            method: "POST",
+            body: body,
+            prefer: "return=minimal"
+        )
     }
     
     func authenticateUser(email: String, password: String) async throws -> User {
         isLoading = true
         defer { isLoading = false }
-        
-        // Simulate API call delay
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-        
-        // Mock authentication logic
-        if email == "test@fitflow.app" && password == "password123" {
-            return User(
-                id: UUID(),
-                email: email,
-                subscriptionTier: .free,
-                preferences: nil,
-                healthProfile: nil,
-                hasCompletedOnboarding: false,
-                createdAt: Date().addingTimeInterval(-86400 * 7), // 7 days ago
-                updatedAt: Date()
-            )
-        } else {
-            throw DatabaseError.authenticationFailed("Invalid credentials")
+        // 1) Auth via GoTrue
+        let session = try await authSignIn(email: email, password: password)
+        guard let token = session.access_token, let authUser = session.user else {
+            throw DatabaseError.authenticationFailed("No session returned. Check email confirmation settings.")
         }
+        setAuthToken(token)
+        // 2) Fetch or create profile row in users table
+        guard let authUUID = UUID(uuidString: authUser.id) else {
+            throw DatabaseError.invalidData("Invalid auth user id")
+        }
+        if let existing = try await getUserById(authUUID) {
+            return existing
+        }
+        // Create minimal user row
+        let new = User(
+            id: authUUID,
+            email: email,
+            subscriptionTier: .free,
+            preferences: nil,
+            healthProfile: nil,
+            hasCompletedOnboarding: false,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        try await createUser(new)
+        return new
     }
     
     func updateUser(_ user: User) async throws -> User {
@@ -89,9 +192,6 @@ class DatabaseService: ObservableObject {
         
         // Simulate API call delay
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        
-        // In real implementation:
-        // let updatedUser = try await supabaseClient.from(Config.Supabase.usersTable).update(user).eq("id", user.id).execute()
         
         // Mock implementation - return updated user with new timestamp
         var updatedUser = user
@@ -112,15 +212,19 @@ class DatabaseService: ObservableObject {
     func getUserById(_ userId: UUID) async throws -> User? {
         isLoading = true
         defer { isLoading = false }
-        
-        // Simulate API call delay
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        
-        // In real implementation:
-        // let user = try await supabaseClient.from(Config.Supabase.usersTable).select().eq("id", userId).single().execute()
-        
-        // Mock implementation
-        return nil
+        let data = try await restRequest(
+            path: Config.Supabase.usersTable,
+            method: "GET",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "id", value: "eq.\(userId.uuidString)"),
+                URLQueryItem(name: "limit", value: "1")
+            ]
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let users = try decoder.decode([User].self, from: data)
+        return users.first
     }
     
     func sendPasswordResetEmail(email: String) async throws {
@@ -255,6 +359,239 @@ class DatabaseService: ObservableObject {
         
         // Mock implementation
         return createMockProgressEntries(for: userId, from: startDate, to: endDate)
+    }
+
+    // MARK: - Fitness Preferences (RPC)
+    
+    func updateFitnessPreferences(userId: UUID, fitness: FitnessPreferences) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        let fitnessData = try JSONEncoder().encode(fitness)
+        let fitnessJSON = try JSONSerialization.jsonObject(with: fitnessData, options: []) as? [String: Any] ?? [:]
+        _ = try await rpc("update_fitness_preferences", payload: ["fitness": fitnessJSON])
+    }
+
+    // MARK: - Finance Preferences (RPC)
+    // Server-side RPC expected: create a PostgreSQL function `update_finance_preferences(finance jsonb)`
+    // that persists the preferences for the authenticated user (via auth.uid()).
+    func updateFinancePreferences(preferences: FinancePreferences) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        let data = try JSONEncoder().encode(preferences)
+        let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+        _ = try await rpc("update_finance_preferences", payload: ["finance": json])
+    }
+
+    // MARK: - Fitness Progress Persistence (Supabase-backed)
+    
+    // Workout Sessions
+    func saveWorkoutSession(userId: UUID, _ session: WorkoutSession) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        struct Row: Encodable {
+            let user_id: String
+            let title: String
+            let occurred_at: String
+            let duration_seconds: Int
+            let exercises: [CompletedExercise]
+            let muscle_groups: [String]
+            let calories_burned: Int?
+            let average_heart_rate: Int?
+        }
+        let row = Row(
+            user_id: userId.uuidString,
+            title: session.title,
+            occurred_at: ISO8601DateFormatter().string(from: session.date),
+            duration_seconds: Int(session.duration),
+            exercises: session.exercises,
+            muscle_groups: session.muscleGroups.map { $0.rawValue },
+            calories_burned: session.caloriesBurned,
+            average_heart_rate: session.averageHeartRate
+        )
+        let body = try JSONEncoder().encode([row])
+        _ = try await restRequest(path: "workout_sessions", method: "POST", body: body, prefer: "return=representation")
+    }
+    
+    func getWorkoutHistory(for userId: UUID) async throws -> [WorkoutSession] {
+        isLoading = true
+        defer { isLoading = false }
+        var items: [Any] = []
+        let data = try await restRequest(
+            path: "workout_sessions",
+            method: "GET",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId.uuidString)"),
+                URLQueryItem(name: "order", value: "occurred_at.desc")
+            ]
+        )
+        if let json = try JSONSerialization.jsonObject(with: data) as? [Any] { items = json }
+        // Decode manually to model
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        // Map each dict to WorkoutSession via re-encoding
+        return try items.compactMap { obj in
+            guard let dict = obj as? [String: Any] else { return nil }
+            // Build a DTO that matches WorkoutSession
+            struct DTO: Codable {
+                let id: UUID?
+                let title: String
+                let occurred_at: Date
+                let duration_seconds: Int
+                let exercises: [CompletedExercise]
+                let muscle_groups: [String]
+                let calories_burned: Int?
+                let average_heart_rate: Int?
+            }
+            let dtoData = try JSONSerialization.data(withJSONObject: dict, options: [])
+            let dto = try decoder.decode(DTO.self, from: dtoData)
+            return WorkoutSession(
+                id: dto.id ?? UUID(),
+                title: dto.title,
+                date: dto.occurred_at,
+                duration: TimeInterval(dto.duration_seconds),
+                exercises: dto.exercises,
+                muscleGroups: dto.muscle_groups.compactMap { MuscleGroup(rawValue: $0) },
+                caloriesBurned: dto.calories_burned ?? 0,
+                averageHeartRate: dto.average_heart_rate ?? 0
+            )
+        }
+    }
+    
+    // Achievements
+    func saveFitnessAchievements(userId: UUID, _ achievements: [FitnessAchievement]) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        struct Row: Encodable {
+            let user_id: String
+            let achievement_key: String
+            let title: String
+            let description: String?
+            let emoji: String?
+            let is_unlocked: Bool
+            let unlocked_at: String?
+            let required_value: Int?
+        }
+        let iso = ISO8601DateFormatter()
+        let rows = achievements.map { a in
+            Row(
+                user_id: userId.uuidString,
+                achievement_key: a.id,
+                title: a.title,
+                description: a.description,
+                emoji: a.emoji,
+                is_unlocked: a.isUnlocked,
+                unlocked_at: a.unlockedDate.map { iso.string(from: $0) },
+                required_value: a.requiredValue
+            )
+        }
+        let body = try JSONEncoder().encode(rows)
+        _ = try await restRequest(
+            path: "fitness_achievements",
+            method: "POST",
+            query: [URLQueryItem(name: "on_conflict", value: "user_id,achievement_key")],
+            body: body,
+            prefer: "resolution=merge-duplicates,return=minimal"
+        )
+    }
+    
+    func getFitnessAchievements(for userId: UUID) async throws -> [FitnessAchievement] {
+        isLoading = true
+        defer { isLoading = false }
+        let data = try await restRequest(
+            path: "fitness_achievements",
+            method: "GET",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId.uuidString)")
+            ]
+        )
+        let decoder = JSONDecoder()
+        struct Row: Decodable {
+            let achievement_key: String
+            let title: String
+            let description: String?
+            let emoji: String?
+            let is_unlocked: Bool
+            let unlocked_at: String?
+            let required_value: Int?
+        }
+        let rows = try decoder.decode([Row].self, from: data)
+        return rows.map { r in
+            FitnessAchievement(
+                id: r.achievement_key,
+                title: r.title,
+                description: r.description ?? "",
+                emoji: r.emoji ?? "🏆",
+                isUnlocked: r.is_unlocked,
+                unlockedDate: (r.unlocked_at != nil ? ISO8601DateFormatter().date(from: r.unlocked_at!) : nil) ?? Date(),
+                requiredValue: r.required_value ?? 0
+            )
+        }
+    }
+    
+    // Weekly Stats
+    func upsertWeeklyStats(userId: UUID, weekStart: Date, stats: WeeklyStats) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        _ = try await rpc("upsert_weekly_stats", payload: [
+            "p_week_start": df.string(from: weekStart),
+            "p_workouts_completed": stats.workoutsCompleted,
+            "p_total_time_seconds": Int(stats.totalTime),
+            "p_calories_burned": stats.caloriesBurned,
+            "p_average_heart_rate": stats.averageHeartRate
+        ])
+    }
+    
+    func getWeeklyStats(for userId: UUID, weekStart: Date) async throws -> WeeklyStats? {
+        isLoading = true
+        defer { isLoading = false }
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        let data = try await restRequest(
+            path: "fitness_weekly_stats",
+            method: "GET",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId.uuidString)"),
+                URLQueryItem(name: "week_start", value: "eq.\(df.string(from: weekStart))")
+            ]
+        )
+        struct Row: Decodable { let workouts_completed: Int; let total_time_seconds: Int; let calories_burned: Int; let average_heart_rate: Int }
+        let rows = try JSONDecoder().decode([Row].self, from: data)
+        guard let r = rows.first else { return nil }
+        return WeeklyStats(
+            workoutsCompleted: r.workouts_completed,
+            totalTime: TimeInterval(r.total_time_seconds),
+            caloriesBurned: r.calories_burned,
+            averageHeartRate: r.average_heart_rate
+        )
+    }
+    
+    // Streaks
+    func setStreak(userId: UUID, count: Int) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        _ = try await rpc("set_streak", payload: ["count": count])
+    }
+    
+    func getStreak(for userId: UUID) async throws -> Int {
+        isLoading = true
+        defer { isLoading = false }
+        let data = try await restRequest(
+            path: "fitness_streaks",
+            method: "GET",
+            query: [
+                URLQueryItem(name: "select", value: "streak_count"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId.uuidString)"),
+                URLQueryItem(name: "limit", value: "1")
+            ]
+        )
+        struct Row: Decodable { let streak_count: Int }
+        let rows = try JSONDecoder().decode([Row].self, from: data)
+        return rows.first?.streak_count ?? 0
     }
     
     // MARK: - Chat Sessions

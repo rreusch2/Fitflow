@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVKit
 
 // MARK: - UserInterest helpers
 // Note: `UserInterest` properties like `icon`, `title`, and `subtitle` are defined in
@@ -26,8 +27,8 @@ struct MainTabView: View {
     var body: some View {
         ZStack {
             TabView(selection: $selectedTab) {
-            // Always show the main feed
-            PersonalizedFeedView()
+            // Always show the main feed - TikTok Style Video Feed
+            TikTokStyleVideoFeed()
                 .tabItem {
                     Label("Flow", systemImage: "brain.head.profile")
                 }
@@ -95,8 +96,8 @@ struct MainTabView: View {
         // Define all possible tabs
         // Only include tabs that have concrete implementations in this file to avoid build errors.
         let allPossibleTabs: [UserInterest: (title: String, icon: String, view: AnyView)] = [
-            .fitness: ("Fitness", "figure.run", AnyView(FitnessView())),
-            .wealth: ("Wealth", "dollarsign.circle.fill", AnyView(WealthView()))
+            .fitness: ("Fitness", "figure.run", AnyView(EnhancedFitnessView())),
+            .wealth: ("Finance", "chart.line.uptrend.xyaxis", AnyView(EnhancedFinanceView()))
         ]
         
         // Return tabs in user's preferred order and selection
@@ -1098,6 +1099,22 @@ private struct ProfileView: View {
                 
                 // Revolutionary Tab Customization Section
                 Section(header: Text("Navigation").foregroundStyle(themeProvider.secondaryTextForSystemContext(colorScheme))) {
+                    NavigationLink {
+                        MemoriesView()
+                            .environmentObject(themeProvider)
+                    } label: {
+                        HStack {
+                            Image(systemName: "brain")
+                                .foregroundColor(.purple)
+                                .frame(width: 30)
+                            Text("Memories")
+                            Spacer()
+                            Text("\(MemoryService.shared.memories.count)")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                    
                     NavigationLink {
                         TabManagementView()
                             .environmentObject(authService)

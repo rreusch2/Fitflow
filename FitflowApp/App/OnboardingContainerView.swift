@@ -76,7 +76,11 @@ struct OnboardingContainerView: View {
             createdAt: Date(),
             updatedAt: Date()
         )
-        Task { await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil) }
+        Task { 
+            await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil)
+            // Ensure theme is applied after onboarding completion
+            themeProvider.applyTheme(for: authService.currentUser)
+        }
     }
 }
 

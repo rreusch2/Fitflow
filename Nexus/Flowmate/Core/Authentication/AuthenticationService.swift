@@ -11,6 +11,7 @@ import SwiftUI
 
 @MainActor
 class AuthenticationService: ObservableObject {
+    static let shared = AuthenticationService()
     @Published var isAuthenticated = false
     @Published var currentUser: User?
     @Published var isLoading = false
@@ -18,9 +19,12 @@ class AuthenticationService: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private let databaseService = DatabaseService.shared
+    private let accessTokenKey = "auth_access_token"
+    private let refreshTokenKey = "auth_refresh_token"
     
     init() {
         setupAuthStateListener()
+        restoreTokens()
     }
     
     // MARK: - Authentication State Management
@@ -33,6 +37,10 @@ class AuthenticationService: ObservableObject {
            let user = try? JSONDecoder().decode(User.self, from: userData) {
             self.currentUser = user
             self.isAuthenticated = true
+        }
+        // Restore tokens
+        if let token = UserDefaults.standard.string(forKey: accessTokenKey) {
+            databaseService.setAuthToken(token)
         }
         
         isLoading = false
@@ -62,28 +70,33 @@ class AuthenticationService: ObservableObject {
                 throw AuthenticationError.weakPassword
             }
             
-            // Create user account
-            let userId = UUID()
-            let newUser = User(
-                id: userId,
-                email: email,
-                subscriptionTier: .free,
-                preferences: nil,
-                healthProfile: nil,
-                hasCompletedOnboarding: false,
-                createdAt: Date(),
-                updatedAt: Date()
-            )
-            
-            // Save user to database
-            try await databaseService.createUser(newUser)
-            
-            // Update local state
-            self.currentUser = newUser
-            self.isAuthenticated = true
-            
-            // Store user session
-            saveUserSession(newUser)
+            // Supabase Auth Sign Up
+            let session = try await databaseService.authSignUp(email: email, password: password)
+            if let token = session.access_token { saveAuthToken(token) }
+            if let refresh = session.refresh_token { saveRefreshToken(refresh) }
+            if let token = session.access_token { databaseService.setAuthToken(token) }
+
+            // Some projects require email confirmation; proceed to create profile row if access token present
+            if let authId = session.user?.id, let authUUID = UUID(uuidString: authId) {
+                // Create minimal users row if not exists
+                if try await databaseService.getUserById(authUUID) == nil {
+                    let newUser = User(
+                        id: authUUID,
+                        email: email,
+                        subscriptionTier: .free,
+                        preferences: nil,
+                        healthProfile: nil,
+                        hasCompletedOnboarding: false,
+                        createdAt: Date(),
+                        updatedAt: Date()
+                    )
+                    try await databaseService.createUser(newUser)
+                    self.currentUser = newUser
+                } else {
+                    self.currentUser = try await databaseService.getUserById(authUUID)
+                }
+            }
+            self.isAuthenticated = self.currentUser != nil
             
             HapticFeedback.success()
             
@@ -109,15 +122,34 @@ class AuthenticationService: ObservableObject {
                 throw AuthenticationError.invalidEmail
             }
             
-            // Authenticate user
-            let user = try await databaseService.authenticateUser(email: email, password: password)
-            
-            // Update local state
-            self.currentUser = user
+            // Authenticate via Supabase Auth
+            let session = try await databaseService.authSignIn(email: email, password: password)
+            guard let token = session.access_token, let authUser = session.user, let authUUID = UUID(uuidString: authUser.id) else {
+                throw AuthenticationError.invalidCredentials
+            }
+            databaseService.setAuthToken(token)
+            saveAuthToken(token)
+            if let refresh = session.refresh_token { saveRefreshToken(refresh) }
+
+            // Fetch or create user row
+            if let existing = try await databaseService.getUserById(authUUID) {
+                self.currentUser = existing
+            } else {
+                let newUser = User(
+                    id: authUUID,
+                    email: email,
+                    subscriptionTier: .free,
+                    preferences: nil,
+                    healthProfile: nil,
+                    hasCompletedOnboarding: false,
+                    createdAt: Date(),
+                    updatedAt: Date()
+                )
+                try await databaseService.createUser(newUser)
+                self.currentUser = newUser
+            }
             self.isAuthenticated = true
-            
-            // Store user session
-            saveUserSession(user)
+            saveUserSession(self.currentUser!)
             
             HapticFeedback.success()
             
@@ -206,7 +238,9 @@ class AuthenticationService: ObservableObject {
         
         // Clear stored session
         UserDefaults.standard.removeObject(forKey: "current_user")
-        UserDefaults.standard.removeObject(forKey: "auth_token")
+        UserDefaults.standard.removeObject(forKey: accessTokenKey)
+        UserDefaults.standard.removeObject(forKey: refreshTokenKey)
+        databaseService.clearAuthToken()
         
         HapticFeedback.light()
     }
@@ -223,6 +257,57 @@ class AuthenticationService: ObservableObject {
             self.currentUser = user
             saveUserSession(user)
             
+        } catch {
+            self.errorMessage = handleAuthError(error)
+        }
+        
+        isLoading = false
+    }
+    
+    // MARK: - Update Fitness Preferences (partial update)
+    
+    func updateFitnessPreferences(_ fitness: FitnessPreferences) async {
+        guard let user = currentUser else { return }
+        
+        // Require existing preferences so we don't have to synthesize defaults
+        guard let existingPreferences = user.preferences else {
+            self.errorMessage = "Please complete onboarding to set your preferences."
+            return
+        }
+        
+        isLoading = true
+        
+        do {
+            // Call RPC for partial update
+            try await databaseService.updateFitnessPreferences(userId: user.id, fitness: fitness)
+            // Update local model optimistically
+            let updatedPreferences = UserPreferences(
+                fitness: fitness,
+                nutrition: existingPreferences.nutrition,
+                motivation: existingPreferences.motivation,
+                business: existingPreferences.business,
+                creativity: existingPreferences.creativity,
+                mindset: existingPreferences.mindset,
+                wealth: existingPreferences.wealth,
+                relationships: existingPreferences.relationships,
+                theme: existingPreferences.theme,
+                goals: existingPreferences.goals,
+                createdAt: existingPreferences.createdAt,
+                updatedAt: Date()
+            )
+            let updatedUser = User(
+                id: user.id,
+                email: user.email,
+                subscriptionTier: user.subscriptionTier,
+                preferences: updatedPreferences,
+                healthProfile: user.healthProfile,
+                hasCompletedOnboarding: user.hasCompletedOnboarding,
+                createdAt: user.createdAt,
+                updatedAt: Date()
+            )
+            self.currentUser = updatedUser
+            saveUserSession(updatedUser)
+            HapticFeedback.success()
         } catch {
             self.errorMessage = handleAuthError(error)
         }
@@ -299,6 +384,20 @@ class AuthenticationService: ObservableObject {
     private func saveUserSession(_ user: User) {
         if let userData = try? JSONEncoder().encode(user) {
             UserDefaults.standard.set(userData, forKey: "current_user")
+        }
+    }
+    
+    private func saveAuthToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: accessTokenKey)
+    }
+    
+    private func saveRefreshToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: refreshTokenKey)
+    }
+    
+    private func restoreTokens() {
+        if let token = UserDefaults.standard.string(forKey: accessTokenKey) {
+            databaseService.setAuthToken(token)
         }
     }
     
