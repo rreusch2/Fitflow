@@ -14,11 +14,13 @@ struct NutritionInsightsView: View {
     @ObservedObject private var aiService = NutritionAIService.shared
     @State private var selectedMealType: MealType = .breakfast
     @State private var todaysMeals: [Meal] = []
-    @State private var isGeneratingMeals = false
+    @State private var personalizedTips: [NutritionTipModel] = []
     @State private var isGeneratingPlan = false
     @State private var isAnalyzingDiet = false
-    @State private var showMealPlan = false
-    @State private var showDietAnalysis = false
+    @State private var showingWeeklyPlan = false
+    @State private var weeklyPlan: WeeklyMealPlan?
+    @State private var dietAnalysis: DietAnalysis? = nil
+    @State private var showingQuickAdd = false
     
     var body: some View {
         NavigationStack {
@@ -35,6 +37,9 @@ struct NutritionInsightsView: View {
                     
                     // Nutrition Tips
                     nutritionTips
+                    
+                    // Quick Actions
+                    quickActionsSection
                     
                     // AI Meal Planner
                     aiMealPlanner
@@ -54,24 +59,13 @@ struct NutritionInsightsView: View {
             }
             .task {
                 await nutritionService.fetchGoals()
-                // Load today summary
+                // Load today summary if backend wired later
                 _ = try? await nutritionService.getSummary(start: Date(), end: Date())
                 // Load AI suggestions for today
                 let meals = (try? await aiService.getDailySuggestions(date: Date(), goals: nutritionService.goals)) ?? []
                 todaysMeals = meals
-                // Generate personalized tips
-                _ = try? await aiService.generatePersonalizedTips(
-                    summary: nutritionService.todaySummary,
-                    goals: nutritionService.goals
-                )
-            }
-            .sheet(isPresented: $showMealPlan) {
-                MealPlanView()
-                    .environmentObject(themeProvider)
-            }
-            .sheet(isPresented: $showDietAnalysis) {
-                DietAnalysisView()
-                    .environmentObject(themeProvider)
+                // Load personalized tips
+                await loadPersonalizedTips()
             }
         }
     }
@@ -184,9 +178,9 @@ struct NutritionInsightsView: View {
                 HStack(spacing: 16) {
                     ForEach(filteredMeals(for: selectedMealType), id: \.id) { meal in
                         MealCard(meal: meal) {
-                            Task { _ = try? await nutritionService.savePlan(for: Date(), meals: [meal]) }
+                            Task { await addToPlan(meal) }
                         } onLogNow: {
-                            Task { _ = try? await nutritionService.logMeal(mealType: meal.type, items: meal.ingredients, source: "ai_suggestion") }
+                            Task { await logMeal(meal) }
                         }
                     }
                 }
@@ -204,64 +198,31 @@ struct NutritionInsightsView: View {
                 
                 Spacer()
                 
-                if aiService.personalizedTips.isEmpty {
-                    Button {
-                        Task {
-                            _ = try? await aiService.generatePersonalizedTips(
-                                summary: nutritionService.todaySummary,
-                                goals: nutritionService.goals
-                            )
-                        }
-                    } label: {
-                        Label("Generate", systemImage: "sparkles")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(themeProvider.theme.accent)
-                    }
+                Button {
+                    Task { await loadPersonalizedTips() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(themeProvider.theme.accent)
                 }
             }
             .padding(.horizontal, 20)
             
             VStack(spacing: 12) {
-                if aiService.personalizedTips.isEmpty {
-                    // Default tips while loading
+                if personalizedTips.isEmpty {
+                    // Fallback tips while loading
                     NutritionTip(
-                        tip: "Track your meals consistently for better insights into your nutrition.",
+                        tip: "Loading personalized tips...",
                         type: .tip,
-                        icon: "pencil.circle"
-                    )
-                    
-                    NutritionTip(
-                        tip: "Focus on whole foods and minimize processed items for optimal health.",
-                        type: .tip,
-                        icon: "leaf.fill"
-                    )
-                    
-                    NutritionTip(
-                        tip: "Stay hydrated throughout the day for better energy and focus.",
-                        type: .tip,
-                        icon: "drop.fill"
+                        icon: "sparkles"
                     )
                 } else {
-                    // AI-generated tips
-                    ForEach(aiService.personalizedTips, id: \.id) { tip in
-                        NutritionTip(
-                            tip: tip.text,
-                            type: mapTipType(tip.type),
-                            icon: tip.icon
-                        )
+                    ForEach(personalizedTips.prefix(3), id: \.id) { tip in
+                        NutritionTipCard(nutritionTip: tip)
                     }
                 }
             }
             .padding(.horizontal, 20)
-        }
-    }
-    
-    private func mapTipType(_ type: NutritionAIService.NutritionTip.TipType) -> InsightType {
-        switch type {
-        case .suggestion: return .suggestion
-        case .positive: return .positive
-        case .warning: return .warning
-        case .tip: return .tip
         }
     }
     
@@ -273,32 +234,18 @@ struct NutritionInsightsView: View {
                 .padding(.horizontal, 20)
             
             VStack(spacing: 12) {
-                // Generate Weekly Meal Plan Button
                 Button {
-                    Task {
-                        isGeneratingPlan = true
-                        do {
-                            let plan = try await aiService.generateWeeklyMealPlan(goals: nutritionService.goals)
-                            showMealPlan = true
-                            // Save the plan to database
-                            if let firstDay = plan.meals.first {
-                                _ = try? await nutritionService.savePlan(for: Date(), meals: [firstDay])
-                            }
-                        } catch {
-                            print("Failed to generate meal plan: \(error)")
-                        }
-                        isGeneratingPlan = false
-                    }
+                    Task { await generateWeeklyPlan() }
                 } label: {
                     HStack {
                         if isGeneratingPlan {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .scaleEffect(0.8)
+                                .foregroundColor(.white)
                         } else {
                             Image(systemName: "sparkles")
                         }
-                        Text("Generate Weekly Meal Plan")
+                        Text(isGeneratingPlan ? "Generating..." : "Generate Weekly Meal Plan")
                             .font(.system(size: 16, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -315,70 +262,18 @@ struct NutritionInsightsView: View {
                 }
                 .disabled(isGeneratingPlan)
                 
-                // Analyze Diet Button
                 Button {
-                    Task {
-                        isAnalyzingDiet = true
-                        do {
-                            // Get recent meals for analysis
-                            let recentMeals = nutritionService.recentMeals.isEmpty ? todaysMeals : nutritionService.recentMeals
-                            let analysis = try await aiService.analyzeDiet(
-                                recentMeals: recentMeals,
-                                goals: nutritionService.goals
-                            )
-                            showDietAnalysis = true
-                        } catch {
-                            print("Failed to analyze diet: \(error)")
-                        }
-                        isAnalyzingDiet = false
-                    }
+                    Task { await analyzeDiet() }
                 } label: {
                     HStack {
                         if isAnalyzingDiet {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: themeProvider.theme.accent))
                                 .scaleEffect(0.8)
+                                .foregroundColor(themeProvider.theme.accent)
                         } else {
                             Image(systemName: "chart.bar.doc.horizontal")
                         }
-                        Text("Analyze My Current Diet")
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                    .foregroundColor(themeProvider.theme.accent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(themeProvider.theme.accent, lineWidth: 2)
-                    )
-                }
-                .disabled(isAnalyzingDiet)
-                
-                // Generate Daily Suggestions Button
-                Button {
-                    Task {
-                        isGeneratingMeals = true
-                        do {
-                            let meals = try await aiService.getDailySuggestions(
-                                date: Date(),
-                                goals: nutritionService.goals
-                            )
-                            todaysMeals = meals
-                        } catch {
-                            print("Failed to generate meal suggestions: \(error)")
-                        }
-                        isGeneratingMeals = false
-                    }
-                } label: {
-                    HStack {
-                        if isGeneratingMeals {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: themeProvider.theme.accent))
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "wand.and.stars")
-                        }
-                        Text("Generate Today's Meal Suggestions")
+                        Text(isAnalyzingDiet ? "Analyzing..." : "Analyze My Current Diet")
                             .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundColor(themeProvider.theme.accent)
@@ -390,7 +285,7 @@ struct NutritionInsightsView: View {
                             .fill(themeProvider.theme.accent.opacity(0.05))
                     )
                 }
-                .disabled(isGeneratingMeals)
+                .disabled(isAnalyzingDiet)
             }
             .padding(.horizontal, 20)
         }
@@ -408,6 +303,123 @@ struct NutritionInsightsView: View {
     private func progress(current: Double?, target: Double?) -> Double {
         guard let current = current, let target = target, target > 0 else { return 0 }
         return min(max(current / target, 0), 1)
+    }
+    
+    // MARK: - Action Functions
+    private func loadPersonalizedTips() async {
+        do {
+            let tips = try await aiService.getNutritionTips(goals: nutritionService.goals, recentMeals: todaysMeals)
+            await MainActor.run {
+                self.personalizedTips = tips
+            }
+        } catch {
+            print("Failed to load personalized tips: \(error)")
+        }
+    }
+    
+    private func generateWeeklyPlan() async {
+        await MainActor.run { isGeneratingPlan = true }
+        
+        do {
+            let plan = try await aiService.generateWeeklyMealPlan()
+            await MainActor.run {
+                self.weeklyPlan = plan
+                self.isGeneratingPlan = false
+                self.showingWeeklyPlan = true
+            }
+        } catch {
+            await MainActor.run { isGeneratingPlan = false }
+            print("Failed to generate weekly plan: \(error)")
+        }
+    }
+    
+    private func analyzeDiet() async {
+        await MainActor.run { isAnalyzingDiet = true }
+        
+        do {
+            let analysis = try await aiService.analyzeDiet(daysBack: 7)
+            await MainActor.run {
+                self.dietAnalysis = analysis
+                self.isAnalyzingDiet = false
+                // Show analysis in a sheet or navigation
+            }
+        } catch {
+            await MainActor.run { isAnalyzingDiet = false }
+            print("Failed to analyze diet: \(error)")
+        }
+    }
+    
+    private func addToPlan(_ meal: Meal) async {
+        do {
+            _ = try await nutritionService.savePlan(for: Date(), meals: [meal])
+            // Show success feedback
+            await MainActor.run {
+                // Could add haptic feedback here
+            }
+        } catch {
+            print("Failed to add meal to plan: \(error)")
+        }
+    }
+    
+    private func logMeal(_ meal: Meal) async {
+        do {
+            _ = try await nutritionService.logMeal(
+                mealType: meal.type,
+                items: meal.ingredients,
+                source: "ai_suggestion"
+            )
+            // Show success feedback
+            await MainActor.run {
+                // Could add haptic feedback here
+            }
+        } catch {
+            print("Failed to log meal: \(error)")
+        }
+    }
+    
+    // MARK: - Quick Actions Section
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Quick Actions")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(themeProvider.theme.textPrimary)
+                .padding(.horizontal, 20)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    QuickActionCard(
+                        title: "Add Calories",
+                        subtitle: "Quick entry",
+                        icon: "plus.circle.fill",
+                        gradient: [Color.green, Color.mint]
+                    ) {
+                        showingQuickAdd = true
+                    }
+                    
+                    QuickActionCard(
+                        title: "Log Water",
+                        subtitle: "Stay hydrated",
+                        icon: "drop.fill",
+                        gradient: [Color.blue, Color.cyan]
+                    ) {
+                        // Future: Quick water logging
+                    }
+                    
+                    QuickActionCard(
+                        title: "Preferences",
+                        subtitle: "Customize AI",
+                        icon: "slider.horizontal.3",
+                        gradient: [Color.purple, Color.pink]
+                    ) {
+                        // Future: Navigate to preferences
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+        .sheet(isPresented: $showingQuickAdd) {
+            QuickCalorieAddView()
+        }
     }
 }
 
@@ -617,7 +629,53 @@ struct NutritionTip: View {
     }
 }
 
-#Preview {
-    NutritionInsightsView()
-        .environmentObject(ThemeProvider())
+// MARK: - NutritionTipCard for AI-generated tips
+struct NutritionTipCard: View {
+    let nutritionTip: NutritionTipModel
+    @EnvironmentObject var themeProvider: ThemeProvider
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: nutritionTip.category.icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(nutritionTip.category.color)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(nutritionTip.category.color.opacity(0.1))
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(nutritionTip.category.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(nutritionTip.category.color)
+                
+                Text(nutritionTip.content)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
+            
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(themeProvider.theme.backgroundSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(nutritionTip.category.color.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Sheet Modifiers
+
+struct NutritionInsightsView_Previews: PreviewProvider {
+    static var previews: some View {
+        NutritionInsightsView()
+            .environmentObject(ThemeProvider())
+    }
 }

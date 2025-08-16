@@ -45,6 +45,115 @@ class DatabaseService: ObservableObject {
         }.resume()
     }
 
+    // MARK: - Generic Request Shim (temporary)
+    // This matches the API expected by services like `NutritionService`.
+    // It returns mocked responses for known nutrition endpoints so the app can compile and run.
+    func request<T: Decodable>(
+        endpoint: String,
+        method: String,
+        queryItems: [URLQueryItem] = [],
+        body: [String: Any] = [:]
+    ) async throws -> T {
+        // Helper to extract query params
+        func q(_ name: String) -> String? { queryItems.first { $0.name == name }?.value }
+
+        // /nutrition/goals (GET/POST)
+        if endpoint.contains("/nutrition/goals") {
+            let goals = GoalsResponse.GoalsData(
+                target_calories: 2200,
+                target_macros: GoalsResponse.GoalsData.TargetMacros(
+                    protein: 160,
+                    carbs: 220,
+                    fat: 70
+                )
+            )
+            let resp = GoalsResponse(goals: goals)
+            // Force-cast is safe by contract of callers
+            return resp as! T
+        }
+
+        // /nutrition/summary (GET)
+        if endpoint.contains("/nutrition/summary") {
+            let _ = q("start_date")
+            let _ = q("end_date")
+            let resp = SummaryResponse(
+                summary: SummaryResponse.SummaryData(
+                    calories: 1850,
+                    protein: 145,
+                    carbs: 190,
+                    fat: 60,
+                    fiber: 28,
+                    entries_count: 3
+                )
+            )
+            return resp as! T
+        }
+
+        // /nutrition/plan/add (POST)
+        if endpoint.contains("/nutrition/plan/add") {
+            let date = (body["date"] as? String) ?? ISO8601DateFormatter().string(from: Date())
+            let resp = PlanResponse(plan: .init(id: UUID().uuidString, date: date))
+            return resp as! T
+        }
+
+        // /nutrition/log (POST)
+        if endpoint.contains("/nutrition/log") {
+            let mealType = (body["meal_type"] as? String) ?? "unknown"
+            let resp = LogResponse(log: .init(
+                id: UUID().uuidString,
+                meal_type: mealType,
+                logged_at: ISO8601DateFormatter().string(from: Date())
+            ))
+            return resp as! T
+        }
+
+        // /nutrition/preferences (GET/POST)
+        if endpoint.contains("/nutrition/preferences") {
+            if method.uppercased() == "GET" {
+                let data = PreferencesData(
+                    dietary_restrictions: [],
+                    preferred_cuisines: [],
+                    disliked_foods: [],
+                    meals_per_day: 3,
+                    max_prep_time: "medium",
+                    cooking_skill: "intermediate",
+                    include_snacks: true,
+                    meal_prep_friendly: false,
+                    budget_level: "moderate",
+                    prefer_local_seasonal: false,
+                    consider_workout_schedule: true,
+                    optimize_for_recovery: false,
+                    include_supplements: false
+                )
+                let resp = PreferencesResponse(preferences: data)
+                return resp as! T
+            } else {
+                let resp = PreferencesSaveResponse(success: true, message: "Saved")
+                return resp as! T
+            }
+        }
+
+        // /nutrition/quick-add (POST)
+        if endpoint.contains("/nutrition/quick-add") {
+            let calories = body["calories"] as? Int ?? 0
+            let description = (body["description"] as? String) ?? "Quick add - \(calories) calories"
+            let mealType = (body["meal_type"] as? String) ?? "snack"
+            let resp = QuickAddResponse(
+                success: true,
+                log: .init(
+                    id: UUID().uuidString,
+                    calories: calories,
+                    description: description,
+                    meal_type: mealType,
+                    logged_at: ISO8601DateFormatter().string(from: Date())
+                )
+            )
+            return resp as! T
+        }
+
+        throw DatabaseError.unknownError("Unhandled endpoint: \(endpoint)")
+    }
+
     // MARK: - Supabase REST helpers
     
     private func restRequest(path: String,

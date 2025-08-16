@@ -20,15 +20,7 @@ struct OnboardingContainerView: View {
         workoutFrequency: WorkoutFrequency.light,
         limitations: []
     )
-    @State private var nutritionPrefs = NutritionPreferences(
-        dietaryRestrictions: [.none],
-        calorieGoal: .maintain,
-        mealPreferences: [.healthy],
-        allergies: [],
-        dislikedFoods: [],
-        cookingSkill: .beginner,
-        mealPrepTime: .minimal
-    )
+    @State private var nutritionPrefs: NutritionPreferences? = NutritionPreferences()
     @State private var motivationPrefs = MotivationPreferences(
         communicationStyle: .energetic,
         reminderFrequency: .daily,
@@ -51,7 +43,7 @@ struct OnboardingContainerView: View {
     @State private var reflection: ReflectionPreference = .weekly
     
     @State private var wealthGoals: Set<WealthGoal> = []
-    @State private var riskTolerance: RiskTolerance = .moderate
+    @State private var riskTolerance: WealthRiskTolerance = .moderate
     @State private var monthlyBudget: Int = 500
     
     @State private var relationshipFocuses: Set<RelationshipFocus> = []
@@ -102,7 +94,7 @@ struct OnboardingContainerView: View {
         let selectedStyle: ThemeStyle
         let selectedAccent: AccentColorChoice
         let fitnessPrefs: FitnessPreferences
-        let nutritionPrefs: NutritionPreferences
+        let nutritionPrefs: NutritionPreferences?
         let motivationPrefs: MotivationPreferences
         let businessFocus: BusinessFocus
         let workStyle: WorkStyle
@@ -113,7 +105,7 @@ struct OnboardingContainerView: View {
         let mindsetFocuses: [MindsetFocus]
         let reflection: ReflectionPreference
         let wealthGoals: [WealthGoal]
-        let riskTolerance: RiskTolerance
+        let riskTolerance: WealthRiskTolerance
         let monthlyBudget: Int
         let relationshipFocuses: [RelationshipFocus]
         let weeklySocialHours: Int
@@ -176,8 +168,7 @@ struct OnboardingContainerView: View {
         UserDefaults.standard.removeObject(forKey: onboardingDraftKey)
     }
     
-    // Lightweight token that summarizes draft changes for a single onChange listener
-    private var draftChangeToken: Int {
+    private func draftChangeToken() -> Int {
         let draft = OnboardingDraft(
             step: step,
             selectedInterests: Array(selectedInterests),
@@ -251,7 +242,7 @@ struct OnboardingContainerView: View {
         case .fitness:
             FitnessSlide(prefs: $fitnessPrefs, isRelevant: selectedInterests.contains(.fitness))
         case .nutrition:
-            NutritionSlide(prefs: $nutritionPrefs, onSkip: nextStep)
+            NutritionSlide(prefs: $nutritionPrefs.unwrap(NutritionPreferences()), onSkip: nextStep)
         case .business:
             BusinessSlide(focus: $businessFocus, workStyle: $workStyle, hoursPerWeek: $weeklyBusinessHours, onSkip: nextStep)
         case .creativity:
@@ -273,7 +264,7 @@ struct OnboardingContainerView: View {
             selectedStyle: selectedStyle,
             selectedAccent: selectedAccent,
             fitness: fitnessPrefs,
-            nutrition: nutritionPrefs,
+            nutrition: nutritionPrefs ?? NutritionPreferences(),
             motivation: motivationPrefs,
             onEditInterests: { step = indexOf(.interests) },
             onEditTheme: { step = indexOf(.theme) },
@@ -318,7 +309,7 @@ struct OnboardingContainerView: View {
             }
 
         return themed
-            .onChange(of: draftChangeToken) { _, _ in
+            .onChange(of: draftChangeToken()) { _, _ in
                 let count = buildPages().count
                 if step >= count { step = max(0, count - 1) }
                 saveDraft()
@@ -357,7 +348,7 @@ struct OnboardingContainerView: View {
         
         let userPreferences = UserPreferences(
             fitness: fitnessPrefs,
-            nutrition: nutritionPrefs,
+            nutrition: nutritionPrefs ?? NutritionPreferences(),
             motivation: motivationPrefs,
             business: businessPrefs,
             creativity: creativityPrefs,
@@ -699,6 +690,7 @@ private struct InterestCard: View {
                     Text(interest.title)
                         .font(.system(size: 15, weight: .semibold))
                         .readableText()
+                        .readableTextBackdrop()
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -706,6 +698,7 @@ private struct InterestCard: View {
                     Text(interest.subtitle)
                         .font(.system(size: 11, weight: .medium))
                         .readableText()
+                        .readableTextBackdrop()
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -892,8 +885,13 @@ private struct NutritionSlide: View {
                     Toggle(mp.displayName, isOn: Binding(
                         get: { prefs.mealPreferences.contains(mp) },
                         set: { isOn in
-                            if isOn { prefs.mealPreferences.append(mp) }
-                            else { prefs.mealPreferences.removeAll { $0 == mp } }
+                            if isOn {
+                                if !prefs.mealPreferences.contains(mp) {
+                                    prefs.mealPreferences.append(mp)
+                                }
+                            } else {
+                                prefs.mealPreferences.removeAll { $0 == mp }
+                            }
                         }
                     ))
                 }
@@ -909,6 +907,16 @@ private struct NutritionSlide: View {
                 .foregroundColor(.textSecondary)
                 .padding(.vertical, 8)
         }
+    }
+}
+
+// Helper to unwrap optional bindings with a default value
+private extension Binding {
+    func unwrap<T>(_ defaultValue: @autoclosure @escaping () -> T) -> Binding<T> where Value == T? {
+        Binding<T>(
+            get: { self.wrappedValue ?? defaultValue() },
+            set: { self.wrappedValue = $0 }
+        )
     }
 }
 
@@ -1251,24 +1259,19 @@ struct StyleCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-        case .vibrancy:
-            return Color.vibrancyGradient
-        case .prism:
-            return Color.prismGradient
-        case .sunset:
-            return Color.sunsetGradient
-        case .ocean:
-            return Color.oceanGradient
-        case .neon:
-            return LinearGradient(
-                colors: [
-                    Color(red: 57/255, green: 255/255, blue: 20/255),
-                    Color(red: 255/255, green: 0/255, blue: 150/255),
-                    Color(red: 0/255, green: 200/255, blue: 255/255)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        case .vibrancy: return Color.vibrancyGradient
+        case .prism: return Color.prismGradient
+        case .sunset: return Color.sunsetGradient
+        case .ocean: return Color.oceanGradient
+        case .neon: return LinearGradient(
+            colors: [
+                Color(red: 57/255, green: 255/255, blue: 20/255),
+                Color(red: 255/255, green: 0/255, blue: 150/255),
+                Color(red: 0/255, green: 200/255, blue: 255/255)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
         }
     }
 }
@@ -1444,7 +1447,7 @@ private struct MindsetSlide: View {
 private struct WealthSlide: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     @Binding var goals: Set<WealthGoal>
-    @Binding var risk: RiskTolerance
+    @Binding var risk: WealthRiskTolerance
     @Binding var monthlyBudget: Int
     var onSkip: () -> Void = {}
     
@@ -1461,7 +1464,7 @@ private struct WealthSlide: View {
                 }
             }
             Picker("Risk Tolerance", selection: $risk) {
-                ForEach(RiskTolerance.allCases) { r in
+                ForEach(WealthRiskTolerance.allCases) { r in
                     Text(r.displayName).tag(r)
                 }
             }
@@ -1534,7 +1537,7 @@ private struct SummarySlide: View {
     let selectedStyle: ThemeStyle
     let selectedAccent: AccentColorChoice
     let fitness: FitnessPreferences
-    let nutrition: NutritionPreferences
+    let nutrition: NutritionPreferences?
     let motivation: MotivationPreferences
     let onEditInterests: () -> Void
     let onEditTheme: () -> Void

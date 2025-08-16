@@ -512,15 +512,7 @@ extension AuthenticationService {
                 workoutFrequency: .moderate,
                 limitations: []
             ),
-            nutrition: NutritionPreferences(
-                dietaryRestrictions: [.none],
-                calorieGoal: .maintain,
-                mealPreferences: [.quickAndEasy, .healthy],
-                allergies: [],
-                dislikedFoods: [],
-                cookingSkill: .intermediate,
-                mealPrepTime: .moderate
-            ),
+            nutrition: NutritionPreferences(),
             motivation: MotivationPreferences(
                 communicationStyle: .energetic,
                 reminderFrequency: .daily,

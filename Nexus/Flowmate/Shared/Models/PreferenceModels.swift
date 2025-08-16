@@ -9,21 +9,62 @@ import Foundation
 
 // MARK: - Nutrition Preferences
 struct NutritionPreferences: Codable {
-    var dietaryRestrictions: [DietaryRestriction]
+    var dietaryRestrictions: Set<DietaryRestriction>
     var calorieGoal: CalorieGoal
     var mealPreferences: [MealPreference]
     var allergies: [String]
-    var dislikedFoods: [String]
+    var dislikedFoods: Set<CommonFood>
     var cookingSkill: CookingSkill
     var mealPrepTime: MealPrepTime
+    var preferredCuisines: Set<CuisineType>
+    var mealsPerDay: Int
+    var maxPrepTime: PrepTimePreference
+    var includeSnacks: Bool
+    var mealPrepFriendly: Bool
+    var budgetLevel: BudgetLevel
+    var preferLocalSeasonal: Bool
+    var considerWorkoutSchedule: Bool
+    var optimizeForRecovery: Bool
+    var includeSupplements: Bool
+    
+    init() {
+        self.dietaryRestrictions = [.none]
+        self.calorieGoal = .maintain
+        self.mealPreferences = [.healthy]
+        self.allergies = []
+        self.dislikedFoods = []
+        self.cookingSkill = .beginner
+        self.mealPrepTime = .moderate
+        self.preferredCuisines = []
+        self.mealsPerDay = 3
+        self.maxPrepTime = .medium
+        self.includeSnacks = true
+        self.mealPrepFriendly = false
+        self.budgetLevel = .moderate
+        self.preferLocalSeasonal = false
+        self.considerWorkoutSchedule = true
+        self.optimizeForRecovery = false
+        self.includeSupplements = false
+    }
     
     enum CodingKeys: String, CodingKey {
-        case allergies, dislikedFoods
+        case allergies
         case dietaryRestrictions = "dietary_restrictions"
         case calorieGoal = "calorie_goal"
         case mealPreferences = "meal_preferences"
+        case dislikedFoods = "disliked_foods"
         case cookingSkill = "cooking_skill"
         case mealPrepTime = "meal_prep_time"
+        case preferredCuisines = "preferred_cuisines"
+        case mealsPerDay = "meals_per_day"
+        case maxPrepTime = "max_prep_time"
+        case includeSnacks = "include_snacks"
+        case mealPrepFriendly = "meal_prep_friendly"
+        case budgetLevel = "budget_level"
+        case preferLocalSeasonal = "prefer_local_seasonal"
+        case considerWorkoutSchedule = "consider_workout_schedule"
+        case optimizeForRecovery = "optimize_for_recovery"
+        case includeSupplements = "include_supplements"
     }
 }
 
@@ -157,6 +198,100 @@ enum MealPrepTime: String, Codable, CaseIterable {
     }
 }
 
+enum CuisineType: String, Codable, CaseIterable {
+    case american = "american"
+    case italian = "italian"
+    case mexican = "mexican"
+    case asian = "asian"
+    case indian = "indian"
+    case mediterranean = "mediterranean"
+    case french = "french"
+    case chinese = "chinese"
+    case japanese = "japanese"
+    case thai = "thai"
+    case greek = "greek"
+    case spanish = "spanish"
+    case middleEastern = "middle_eastern"
+    
+    var displayName: String {
+        switch self {
+        case .american: return "American"
+        case .italian: return "Italian"
+        case .mexican: return "Mexican"
+        case .asian: return "Asian"
+        case .indian: return "Indian"
+        case .mediterranean: return "Mediterranean"
+        case .french: return "French"
+        case .chinese: return "Chinese"
+        case .japanese: return "Japanese"
+        case .thai: return "Thai"
+        case .greek: return "Greek"
+        case .spanish: return "Spanish"
+        case .middleEastern: return "Middle Eastern"
+        }
+    }
+}
+
+enum CommonFood: String, Codable, CaseIterable {
+    case dairy = "dairy"
+    case nuts = "nuts"
+    case seafood = "seafood"
+    case eggs = "eggs"
+    case mushrooms = "mushrooms"
+    case onions = "onions"
+    case garlic = "garlic"
+    case spicy = "spicy"
+    case coconut = "coconut"
+    case tomatoes = "tomatoes"
+    case avocado = "avocado"
+    case beans = "beans"
+    
+    var displayName: String {
+        switch self {
+        case .dairy: return "Dairy"
+        case .nuts: return "Nuts"
+        case .seafood: return "Seafood"
+        case .eggs: return "Eggs"
+        case .mushrooms: return "Mushrooms"
+        case .onions: return "Onions"
+        case .garlic: return "Garlic"
+        case .spicy: return "Spicy Food"
+        case .coconut: return "Coconut"
+        case .tomatoes: return "Tomatoes"
+        case .avocado: return "Avocado"
+        case .beans: return "Beans"
+        }
+    }
+}
+
+enum PrepTimePreference: String, Codable, CaseIterable {
+    case quick = "quick"
+    case medium = "medium"
+    case extended = "extended"
+    
+    var displayName: String {
+        switch self {
+        case .quick: return "Quick (15 min)"
+        case .medium: return "Medium (30 min)"
+        case .extended: return "Extended (60+ min)"
+        }
+    }
+}
+
+enum BudgetLevel: String, Codable, CaseIterable {
+    case low = "low"
+    case moderate = "moderate"
+    case high = "high"
+    
+    var displayName: String {
+        switch self {
+        case .low: return "Budget-Friendly"
+        case .moderate: return "Moderate"
+        case .high: return "Premium"
+        }
+    }
+}
+
 // MARK: - Motivation Preferences
 struct MotivationPreferences: Codable {
     var communicationStyle: CommunicationStyle
@@ -245,7 +380,7 @@ enum WealthGoal: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum RiskTolerance: String, Codable, CaseIterable, Identifiable {
+enum WealthRiskTolerance: String, Codable, CaseIterable, Identifiable {
     case low, moderate, high
     var id: String { rawValue }
     var displayName: String { rawValue.capitalized }
@@ -253,7 +388,7 @@ enum RiskTolerance: String, Codable, CaseIterable, Identifiable {
 
 struct WealthPreferences: Codable {
     var goals: [WealthGoal]
-    var risk: RiskTolerance
+    var risk: WealthRiskTolerance
     var monthlyBudget: Int
 }
 
