@@ -12,10 +12,13 @@ struct NutritionInsightsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var nutritionService = NutritionService.shared
     @ObservedObject private var aiService = NutritionAIService.shared
-    @State private var selectedMealType: NutritionMealType = .breakfast
-    @State private var todaysMeals: [NutritionMeal] = []
-    // Predefine grid columns to aid SwiftUI type inference
-    private let overviewColumns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
+    @State private var selectedMealType: MealType = .breakfast
+    @State private var todaysMeals: [Meal] = []
+    @State private var isGeneratingMeals = false
+    @State private var isGeneratingPlan = false
+    @State private var isAnalyzingDiet = false
+    @State private var showMealPlan = false
+    @State private var showDietAnalysis = false
     
     var body: some View {
         NavigationStack {
@@ -51,11 +54,24 @@ struct NutritionInsightsView: View {
             }
             .task {
                 await nutritionService.fetchGoals()
-                // Load today summary if backend wired later
+                // Load today summary
                 _ = try? await nutritionService.getSummary(start: Date(), end: Date())
                 // Load AI suggestions for today
                 let meals = (try? await aiService.getDailySuggestions(date: Date(), goals: nutritionService.goals)) ?? []
                 todaysMeals = meals
+                // Generate personalized tips
+                _ = try? await aiService.generatePersonalizedTips(
+                    summary: nutritionService.todaySummary,
+                    goals: nutritionService.goals
+                )
+            }
+            .sheet(isPresented: $showMealPlan) {
+                MealPlanView()
+                    .environmentObject(themeProvider)
+            }
+            .sheet(isPresented: $showDietAnalysis) {
+                DietAnalysisView()
+                    .environmentObject(themeProvider)
             }
         }
     }
@@ -93,40 +109,40 @@ struct NutritionInsightsView: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(themeProvider.theme.textPrimary)
                 .padding(.horizontal, 20)
-            overviewGrid
-        }
-    }
-
-    private var overviewGrid: some View {
-        LazyVGrid(columns: overviewColumns, spacing: 12) {
-            NutritionCard(
-                title: "Calories",
-                current: nutritionService.todaySummary != nil ? String(Int(nutritionService.todaySummary!.calories)) : "—",
-                target: nutritionService.goals?.targetCalories != nil ? String(nutritionService.goals!.targetCalories!) : "—",
-                progress: progress(current: nutritionService.todaySummary?.calories as Double?, target: (nutritionService.goals?.targetCalories).map(Double.init)),
-                color: Color.blue
-            )
-            NutritionCard(
-                title: "Protein",
-                current: nutritionService.todaySummary != nil ? "\(Int(nutritionService.todaySummary!.protein))g" : "—",
-                target: nutritionService.goals?.targetMacros?.protein != nil ? "\(Int(nutritionService.goals!.targetMacros!.protein!))g" : "—",
-                progress: progress(current: nutritionService.todaySummary?.protein as Double?, target: nutritionService.goals?.targetMacros?.protein as Double?),
-                color: Color.red
-            )
-            NutritionCard(
-                title: "Carbs",
-                current: nutritionService.todaySummary != nil ? "\(Int(nutritionService.todaySummary!.carbs))g" : "—",
-                target: nutritionService.goals?.targetMacros?.carbs != nil ? "\(Int(nutritionService.goals!.targetMacros!.carbs!))g" : "—",
-                progress: progress(current: nutritionService.todaySummary?.carbs as Double?, target: nutritionService.goals?.targetMacros?.carbs as Double?),
-                color: Color.orange
-            )
-            NutritionCard(
-                title: "Fat",
-                current: nutritionService.todaySummary != nil ? "\(Int(nutritionService.todaySummary!.fat))g" : "—",
-                target: nutritionService.goals?.targetMacros?.fat != nil ? "\(Int(nutritionService.goals!.targetMacros!.fat!))g" : "—",
-                progress: progress(current: nutritionService.todaySummary?.fat as Double?, target: nutritionService.goals?.targetMacros?.fat as Double?),
-                color: Color.green
-            )
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                let s = nutritionService.todaySummary
+                let g = nutritionService.goals
+                NutritionCard(
+                    title: "Calories",
+                    current: s != nil ? String(Int(s!.calories)) : "—",
+                    target: g?.targetCalories != nil ? String(g!.targetCalories!) : "—",
+                    progress: progress(current: s?.calories as Double?, target: g?.targetCalories as Int?),
+                    color: Color.blue
+                )
+                NutritionCard(
+                    title: "Protein",
+                    current: s != nil ? "\(Int(s!.protein))g" : "—",
+                    target: g?.targetMacros?.protein != nil ? "\(Int(g!.targetMacros!.protein!))g" : "—",
+                    progress: progress(current: s?.protein as Double?, target: g?.targetMacros?.protein as Double?),
+                    color: Color.red
+                )
+                NutritionCard(
+                    title: "Carbs",
+                    current: s != nil ? "\(Int(s!.carbs))g" : "—",
+                    target: g?.targetMacros?.carbs != nil ? "\(Int(g!.targetMacros!.carbs!))g" : "—",
+                    progress: progress(current: s?.carbs as Double?, target: g?.targetMacros?.carbs as Double?),
+                    color: Color.orange
+                )
+                NutritionCard(
+                    title: "Fat",
+                    current: s != nil ? "\(Int(s!.fat))g" : "—",
+                    target: g?.targetMacros?.fat != nil ? "\(Int(g!.targetMacros!.fat!))g" : "—",
+                    progress: progress(current: s?.fat as Double?, target: g?.targetMacros?.fat as Double?),
+                    color: Color.green
+                )
+            }
+            .padding(.horizontal, 20)
         }
     }
     
@@ -141,7 +157,7 @@ struct NutritionInsightsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     // Limit to the four types supported by models
-                    ForEach([NutritionMealType.breakfast, .lunch, .dinner, .snack], id: \.self) { mealType in
+                    ForEach([MealType.breakfast, .lunch, .dinner, .snack], id: \.self) { mealType in
                         Button {
                             selectedMealType = mealType
                         } label: {
@@ -166,11 +182,11 @@ struct NutritionInsightsView: View {
             // Meal Cards
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
-                    ForEach(filteredMeals(for: selectedMealType), id: \.title) { meal in
+                    ForEach(filteredMeals(for: selectedMealType), id: \.id) { meal in
                         MealCard(meal: meal) {
                             Task { _ = try? await nutritionService.savePlan(for: Date(), meals: [meal]) }
                         } onLogNow: {
-                            Task { _ = try? await nutritionService.logMeal(mealType: meal.mealType, items: meal.items, source: "ai_suggestion") }
+                            Task { _ = try? await nutritionService.logMeal(mealType: meal.type, items: meal.ingredients, source: "ai_suggestion") }
                         }
                     }
                 }
@@ -181,31 +197,71 @@ struct NutritionInsightsView: View {
     
     private var nutritionTips: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Personalized Tips")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(themeProvider.theme.textPrimary)
-                .padding(.horizontal, 20)
-            
-            VStack(spacing: 12) {
-                NutritionTip(
-                    tip: "Add 20g more protein to reach your daily goal. Try Greek yogurt or a protein shake.",
-                    type: .suggestion,
-                    icon: "target"
-                )
+            HStack {
+                Text("Personalized Tips")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.textPrimary)
                 
-                NutritionTip(
-                    tip: "Great job staying hydrated! You're 85% to your water goal.",
-                    type: .positive,
-                    icon: "drop.fill"
-                )
+                Spacer()
                 
-                NutritionTip(
-                    tip: "Consider timing your carbs around workouts for better performance.",
-                    type: .tip,
-                    icon: "clock.fill"
-                )
+                if aiService.personalizedTips.isEmpty {
+                    Button {
+                        Task {
+                            _ = try? await aiService.generatePersonalizedTips(
+                                summary: nutritionService.todaySummary,
+                                goals: nutritionService.goals
+                            )
+                        }
+                    } label: {
+                        Label("Generate", systemImage: "sparkles")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(themeProvider.theme.accent)
+                    }
+                }
             }
             .padding(.horizontal, 20)
+            
+            VStack(spacing: 12) {
+                if aiService.personalizedTips.isEmpty {
+                    // Default tips while loading
+                    NutritionTip(
+                        tip: "Track your meals consistently for better insights into your nutrition.",
+                        type: .tip,
+                        icon: "pencil.circle"
+                    )
+                    
+                    NutritionTip(
+                        tip: "Focus on whole foods and minimize processed items for optimal health.",
+                        type: .tip,
+                        icon: "leaf.fill"
+                    )
+                    
+                    NutritionTip(
+                        tip: "Stay hydrated throughout the day for better energy and focus.",
+                        type: .tip,
+                        icon: "drop.fill"
+                    )
+                } else {
+                    // AI-generated tips
+                    ForEach(aiService.personalizedTips, id: \.id) { tip in
+                        NutritionTip(
+                            tip: tip.text,
+                            type: mapTipType(tip.type),
+                            icon: tip.icon
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    private func mapTipType(_ type: NutritionAIService.NutritionTip.TipType) -> InsightType {
+        switch type {
+        case .suggestion: return .suggestion
+        case .positive: return .positive
+        case .warning: return .warning
+        case .tip: return .tip
         }
     }
     
@@ -217,14 +273,31 @@ struct NutritionInsightsView: View {
                 .padding(.horizontal, 20)
             
             VStack(spacing: 12) {
+                // Generate Weekly Meal Plan Button
                 Button {
                     Task {
-                        let meals = (try? await aiService.getDailySuggestions(date: Date(), goals: nutritionService.goals)) ?? []
-                        todaysMeals = meals
+                        isGeneratingPlan = true
+                        do {
+                            let plan = try await aiService.generateWeeklyMealPlan(goals: nutritionService.goals)
+                            showMealPlan = true
+                            // Save the plan to database
+                            if let firstDay = plan.meals.first {
+                                _ = try? await nutritionService.savePlan(for: Date(), meals: [firstDay])
+                            }
+                        } catch {
+                            print("Failed to generate meal plan: \(error)")
+                        }
+                        isGeneratingPlan = false
                     }
                 } label: {
                     HStack {
-                        Image(systemName: "sparkles")
+                        if isGeneratingPlan {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "sparkles")
+                        }
                         Text("Generate Weekly Meal Plan")
                             .font(.system(size: 16, weight: .semibold))
                     }
@@ -240,13 +313,72 @@ struct NutritionInsightsView: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .disabled(isGeneratingPlan)
                 
+                // Analyze Diet Button
                 Button {
-                    // Placeholder for analysis flow
+                    Task {
+                        isAnalyzingDiet = true
+                        do {
+                            // Get recent meals for analysis
+                            let recentMeals = nutritionService.recentMeals.isEmpty ? todaysMeals : nutritionService.recentMeals
+                            let analysis = try await aiService.analyzeDiet(
+                                recentMeals: recentMeals,
+                                goals: nutritionService.goals
+                            )
+                            showDietAnalysis = true
+                        } catch {
+                            print("Failed to analyze diet: \(error)")
+                        }
+                        isAnalyzingDiet = false
+                    }
                 } label: {
                     HStack {
-                        Image(systemName: "chart.bar.doc.horizontal")
+                        if isAnalyzingDiet {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: themeProvider.theme.accent))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "chart.bar.doc.horizontal")
+                        }
                         Text("Analyze My Current Diet")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(themeProvider.theme.accent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(themeProvider.theme.accent, lineWidth: 2)
+                    )
+                }
+                .disabled(isAnalyzingDiet)
+                
+                // Generate Daily Suggestions Button
+                Button {
+                    Task {
+                        isGeneratingMeals = true
+                        do {
+                            let meals = try await aiService.getDailySuggestions(
+                                date: Date(),
+                                goals: nutritionService.goals
+                            )
+                            todaysMeals = meals
+                        } catch {
+                            print("Failed to generate meal suggestions: \(error)")
+                        }
+                        isGeneratingMeals = false
+                    }
+                } label: {
+                    HStack {
+                        if isGeneratingMeals {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: themeProvider.theme.accent))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "wand.and.stars")
+                        }
+                        Text("Generate Today's Meal Suggestions")
                             .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundColor(themeProvider.theme.accent)
@@ -258,41 +390,28 @@ struct NutritionInsightsView: View {
                             .fill(themeProvider.theme.accent.opacity(0.05))
                     )
                 }
+                .disabled(isGeneratingMeals)
             }
             .padding(.horizontal, 20)
         }
     }
     
     // MARK: - Helpers
-    private func filteredMeals(for type: NutritionMealType) -> [NutritionMeal] {
-        todaysMeals.filter { $0.mealType == type }
+    private func filteredMeals(for type: MealType) -> [Meal] {
+        todaysMeals.filter { $0.type == type }
     }
     
+    private func progress(current: Double?, target: Int?) -> Double {
+        guard let current = current, let target = target, target > 0 else { return 0 }
+        return min(max(current / Double(target), 0), 1)
+    }
     private func progress(current: Double?, target: Double?) -> Double {
         guard let current = current, let target = target, target > 0 else { return 0 }
         return min(max(current / target, 0), 1)
     }
 }
 
-// MARK: - MealType UI helpers
-private extension NutritionMealType {
-    var displayName: String {
-        switch self {
-        case .breakfast: return "Breakfast"
-        case .lunch: return "Lunch"
-        case .dinner: return "Dinner"
-        case .snack: return "Snack"
-        }
-    }
-    var icon: String {
-        switch self {
-        case .breakfast: return "sunrise.fill"
-        case .lunch: return "fork.knife"
-        case .dinner: return "moon.stars.fill"
-        case .snack: return "takeoutbag.and.cup.and.straw.fill"
-        }
-    }
-}
+// MARK: - MealType UI helpers (use built-in on MealType in models)
 
 // Removed MealSuggestion in favor of real Meal from models
 
@@ -352,28 +471,36 @@ struct NutritionCard: View {
     }
 }
 
+// Helper for macro totals used by MealCard
+private struct NutritionTotals {
+    let calories: Int
+    let protein: Int
+    let carbs: Int
+    let fat: Int
+}
+
 struct MealCard: View {
-    let meal: NutritionMeal
+    let meal: Meal
     var onAddToPlan: () -> Void
     var onLogNow: () -> Void
     @EnvironmentObject var themeProvider: ThemeProvider
     
     private var totals: NutritionTotals {
-        let calories = meal.items.reduce(0) { $0 + $1.calories }
-        let p = meal.items.compactMap { $0.macros?.protein }.reduce(0, +)
-        let c = meal.items.compactMap { $0.macros?.carbs }.reduce(0, +)
-        let f = meal.items.compactMap { $0.macros?.fat }.reduce(0, +)
+        let calories = meal.ingredients.reduce(0) { $0 + $1.calories }
+        let p = meal.ingredients.map { $0.macros.protein }.reduce(0, +)
+        let c = meal.ingredients.map { $0.macros.carbs }.reduce(0, +)
+        let f = meal.ingredients.map { $0.macros.fat }.reduce(0, +)
         return NutritionTotals(calories: calories, protein: p, carbs: c, fat: f)
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(meal.title)
+                Text(meal.name)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(themeProvider.theme.textPrimary)
                 
-                if let first = meal.items.first {
+                if let first = meal.ingredients.first {
                     Text(first.name)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(themeProvider.theme.textSecondary)

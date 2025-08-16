@@ -70,7 +70,7 @@ class DatabaseService: ObservableObject {
         return data
     }
     
-    func rpc(_ name: String, payload: [String: Any]) async throws -> Data {
+    private func rpc(_ name: String, payload: [String: Any]) async throws -> Data {
         let url = supabaseBaseURL.appendingPathComponent("rest/v1/rpc/\(name)")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
