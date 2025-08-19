@@ -407,23 +407,18 @@ struct TrendCard: View {
     @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
-        HStack(spacing: 12) {
-            Text(trend.emoji)
-                .font(.system(size: 24))
+        HStack(spacing: 6) {
+            Circle()
+                .fill(trend.color)
+                .frame(width: 12, height: 12)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trend.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(themeProvider.theme.textPrimary)
-                
-                Text(trend.description)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
-                    .lineLimit(2)
-            }
+            Text(trend.title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(themeProvider.theme.textPrimary)
             
-            Spacer()
-            
+            Text("\(Int(trend.percentage))%")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(trend.color)
             Image(systemName: trend.isPositive ? "arrow.up.right" : "arrow.down.right")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(trend.isPositive ? .green : .red)

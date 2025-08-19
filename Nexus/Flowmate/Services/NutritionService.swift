@@ -389,9 +389,11 @@ struct NutritionGoalsResponse: Codable {
 
 struct NutritionGoalsRequest: Codable {
     let userId: UUID
-    let targetCalories: Int?
-    let targetMacros: [String: Double]?
-    let dietPreferences: [String: Any]?
+    let targetCalories: Double
+    let targetProtein: Double?
+    let targetCarbs: Double?
+    let targetFat: Double?
+    let dietPreferences: [String: String]
     let exclusions: [String]
     let optInDailyAI: Bool
     let preferredAITimeLocal: String?
@@ -400,7 +402,9 @@ struct NutritionGoalsRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case targetCalories = "target_calories"
-        case targetMacros = "target_macros"
+        case targetProtein = "target_protein"
+        case targetCarbs = "target_carbs"
+        case targetFat = "target_fat"
         case dietPreferences = "diet_preferences"
         case exclusions
         case optInDailyAI = "opt_in_daily_ai"
@@ -423,6 +427,18 @@ struct NutritionGoalsRequest: Codable {
         self.optInDailyAI = goals.optInDailyAI
         self.preferredAITimeLocal = nil // TODO: Convert time to string
         self.preferredTimezone = goals.timezone
+    }
+}
+
+struct NutritionGoalsResponse: Codable {
+    let goals: NutritionGoals
+    let createdAt: String
+    let updatedAt: String
+    
+    enum CodingKeys: String, CodingKey {
+        case goals
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }
 
@@ -458,13 +474,11 @@ struct NutritionSummaryResponse: Codable {
             mealsLogged: mealsLogged,
             lastUpdated: lastUpdate
         )
-    }
-}
 
 struct MealLogRequest: Codable {
     let userId: UUID
-    let loggedAt: Date
-    let mealType: String
+    let meal: Meal
+    let timestamp: String
     let items: [NutritionService.MealLog.MealLogItem]
     let totals: NutritionService.MealLog.NutritionTotals
     let source: String

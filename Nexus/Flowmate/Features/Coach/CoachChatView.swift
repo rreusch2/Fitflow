@@ -368,7 +368,7 @@ struct CoachChatView: View {
     }
 }
 
-private struct QuickActionButton: View {
+private struct CoachQuickActionButton: View {
     let title: String
     let systemImage: String
     let gradient: LinearGradient

@@ -251,21 +251,198 @@ struct DietAnalysis {
     }
 }
 
-struct NutritionTip {
-    let id: UUID
-    let type: InsightType
-    let title: String
-    let description: String
-    let icon: String
-    let priority: String
-    let actionable: Bool
+// MARK: - Data Models
+extension NutritionAIService {
+    struct NutritionTip: Codable, Identifiable {
+        let id: UUID
+        let type: String
+        let title: String
+        let description: String
+        let icon: String
+        let priority: String
+        let actionable: Bool
+        
+        init(id: UUID = UUID(), type: String, title: String, description: String, icon: String, priority: String, actionable: Bool) {
+            self.id = id
+            self.type = type
+            self.title = title
+            self.description = description
+            self.icon = icon
+            self.priority = priority
+            self.actionable = actionable
+        }
+    }
+    
+    struct WeeklyMealPlan: Codable, Identifiable {
+        let id: UUID
+        let startDate: Date
+        let days: [DayPlan]
+        let shoppingList: [ShoppingItem]
+        let prepNotes: String
+        let totalCost: Double?
+        
+        struct DayPlan: Codable, Identifiable {
+            let id: UUID
+            let date: Date
+            let meals: [Meal]
+            let dayTotals: DayTotals
+            
+            init(id: UUID = UUID(), date: Date, meals: [Meal], dayTotals: DayTotals) {
+                self.id = id
+                self.date = date
+                self.meals = meals
+                self.dayTotals = dayTotals
+            }
+        }
+        
+        struct DayTotals: Codable {
+            let calories: Double
+            let protein: Double
+            let carbs: Double
+            let fat: Double
+        }
+        
+        struct ShoppingItem: Codable, Identifiable {
+            let id: UUID
+            let name: String
+            let quantity: String
+            let category: String
+            let estimatedCost: Double?
+            let notes: String?
+            
+            init(id: UUID = UUID(), name: String, quantity: String, category: String, estimatedCost: Double? = nil, notes: String? = nil) {
+                self.id = id
+                self.name = name
+                self.quantity = quantity
+                self.category = category
+                self.estimatedCost = estimatedCost
+                self.notes = notes
+            }
+        }
+        
+        init(id: UUID = UUID(), startDate: Date, days: [DayPlan], shoppingList: [ShoppingItem], prepNotes: String, totalCost: Double? = nil) {
+            self.id = id
+            self.startDate = startDate
+            self.days = days
+            self.shoppingList = shoppingList
+            self.prepNotes = prepNotes
+            self.totalCost = totalCost
+        }
+    }
+    
+    struct DietAnalysis: Codable, Identifiable {
+        let id: UUID
+        let daysAnalyzed: Int
+        let overallScore: Double
+        let periodDescription: String
+        let keyTrends: [Trend]
+        let habitInsights: [HabitInsight]
+        let macroBreakdown: MacroBreakdown
+        let micronutrientStatus: [MicronutrientStatus]
+        let avgDailyWater: Double
+        let hydrationStatus: HydrationStatus
+        let recommendations: Recommendations
+        
+        struct Trend: Codable, Identifiable {
+            let id: UUID
+            let title: String
+            let description: String
+            let emoji: String
+            let isPositive: Bool
+            
+            init(id: UUID = UUID(), title: String, description: String, emoji: String, isPositive: Bool) {
+                self.id = id
+                self.title = title
+                self.description = description
+                self.emoji = emoji
+                self.isPositive = isPositive
+            }
+        }
+        
+        struct HabitInsight: Codable, Identifiable {
+            let id: UUID
+            let habit: String
+            let insight: String
+            let emoji: String
+            
+            init(id: UUID = UUID(), habit: String, insight: String, emoji: String) {
+                self.id = id
+                self.habit = habit
+                self.insight = insight
+                self.emoji = emoji
+            }
+        }
+        
+        struct MacroBreakdown: Codable {
+            let proteinPercent: Double
+            let carbsPercent: Double
+            let fatPercent: Double
+            let avgProtein: Double
+            let avgCarbs: Double
+            let avgFat: Double
+        }
+        
+        struct MicronutrientStatus: Codable {
+            let nutrient: String
+            let adequacyPercent: Double
+            let statusText: String
+            let statusColor: String
+        }
+        
+        struct HydrationStatus: Codable {
+            let description: String
+            let emoji: String
+            let color: String
+        }
+        
+        struct Recommendations: Codable {
+            let priority: [Recommendation]
+            let mealTiming: [Recommendation]
+            let supplements: [Recommendation]
+        }
+        
+        struct Recommendation: Codable, Identifiable {
+            let id: UUID
+            let title: String
+            let description: String
+            let category: String
+            
+            init(id: UUID = UUID(), title: String, description: String, category: String) {
+                self.id = id
+                self.title = title
+                self.description = description
+                self.category = category
+            }
+        }
+        
+        init(id: UUID = UUID(), daysAnalyzed: Int, overallScore: Double, periodDescription: String, keyTrends: [Trend], habitInsights: [HabitInsight], macroBreakdown: MacroBreakdown, micronutrientStatus: [MicronutrientStatus], avgDailyWater: Double, hydrationStatus: HydrationStatus, recommendations: Recommendations) {
+            self.id = id
+            self.daysAnalyzed = daysAnalyzed
+            self.overallScore = overallScore
+            self.periodDescription = periodDescription
+            self.keyTrends = keyTrends
+            self.habitInsights = habitInsights
+            self.macroBreakdown = macroBreakdown
+            self.micronutrientStatus = micronutrientStatus
+            self.avgDailyWater = avgDailyWater
+            self.hydrationStatus = hydrationStatus
+            self.recommendations = recommendations
+        }
+    }
 }
 
 // MARK: - Request/Response Models
 
 struct DailySuggestionsRequest: Codable {
-    let date: Date
+    let date: String
     let goals: NutritionService.NutritionGoals?
+    
+    init(date: Date, goals: NutritionService.NutritionGoals?) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        self.date = formatter.string(from: date)
+        self.goals = goals
+    }
 }
 
 struct DailySuggestionsResponse: Codable {
@@ -309,7 +486,14 @@ struct DailySuggestionsResponse: Codable {
 
 struct WeeklyMealPlanRequest: Codable {
     let preferences: MealPlanPreferences
-    let startDate: Date
+    let startDate: String
+    
+    init(preferences: MealPlanPreferences, startDate: Date) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        self.preferences = preferences
+        self.startDate = formatter.string(from: startDate)
+    }
 }
 
 struct WeeklyMealPlanResponse: Codable {

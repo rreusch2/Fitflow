@@ -285,13 +285,12 @@ struct ReferenceRow: View {
             id: UUID(),
             name: "Chicken Breast",
             brand: "Organic Valley",
-            caloriesPer100g: 165,
-            proteinPer100g: 31,
-            carbsPer100g: 0,
-            fatPer100g: 3.6,
-            fiberPer100g: 0,
-            sugarPer100g: 0,
-            quantity: 150
+            serving: "100g",
+            calories: 165,
+            macros: MacroBreakdown(protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 70),
+            tags: ["protein", "meat"],
+            isPublic: true,
+            source: "nutrition-database"
         )
     ) { _ in }
     .environmentObject(ThemeProvider())

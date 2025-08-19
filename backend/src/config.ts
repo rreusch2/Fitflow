@@ -28,7 +28,13 @@ const configSchema = z.object({
   AI_MAX_TOKENS: z.coerce.number().default(4096),
   
   // Logging
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info')
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  
+  // AI Service Configuration
+  ai: z.object({
+    apiKey: z.string(),
+    baseUrl: z.string().url()
+  }).optional()
 });
 
 function loadConfig() {
@@ -47,7 +53,11 @@ function loadConfig() {
     AI_CACHE_TTL: process.env.AI_CACHE_TTL,
     AI_TIMEOUT: process.env.AI_TIMEOUT,
     AI_MAX_TOKENS: process.env.AI_MAX_TOKENS,
-    LOG_LEVEL: process.env.LOG_LEVEL
+    LOG_LEVEL: process.env.LOG_LEVEL,
+    ai: process.env.XAI_API_KEY ? {
+      apiKey: process.env.XAI_API_KEY,
+      baseUrl: 'https://api.x.ai/v1'
+    } : undefined
   };
 
   const result = configSchema.safeParse(rawConfig);

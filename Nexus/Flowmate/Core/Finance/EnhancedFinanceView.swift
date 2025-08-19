@@ -793,7 +793,7 @@ struct EnhancedFinanceView: View {
 
 // MARK: - Supporting Views
 
-struct StatCard: View {
+struct FinanceStatCard: View {
     let title: String
     let value: String
     let subtitle: String

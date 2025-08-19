@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 } from 'uuid';
 import { config } from '../config';
 
 interface UserContext {
@@ -30,8 +30,11 @@ export class NutritionAIService {
   private grokBaseUrl: string;
 
   constructor() {
-    this.grokApiKey = config.ai.grokApiKey;
-    this.grokBaseUrl = config.ai.grokBaseUrl;
+    if (!config.ai) {
+      throw new Error('AI configuration is missing');
+    }
+    this.grokApiKey = config.ai.apiKey;
+    this.grokBaseUrl = config.ai.baseUrl;
   }
 
   async generateDailySuggestions(params: DailySuggestionsParams) {
@@ -249,8 +252,8 @@ Return JSON array of tips with type, title, description, icon, priority, and act
 
     const data = await response.json();
     return {
-      content: data.choices[0].message.content,
-      usage: data.usage
+      content: (data as any).choices[0].message.content,
+      usage: (data as any).usage
     };
   }
 
@@ -278,7 +281,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
       const parsed = JSON.parse(jsonMatch[0]);
       
       return {
-        id: uuidv4(),
+        id: v4(),
         title: parsed.title || 'Weekly Meal Plan',
         description: parsed.description || 'AI-generated meal plan',
         targetCalories: parsed.targetCalories || 2000,
@@ -331,7 +334,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
   private getFallbackMealSuggestions() {
     return [
       {
-        id: uuidv4(),
+        id: v4(),
         type: 'breakfast',
         name: 'Greek Yogurt Bowl',
         description: 'High-protein breakfast with berries and granola',
@@ -339,7 +342,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
         macros: { protein: 25, carbs: 40, fat: 10, fiber: 6 },
         ingredients: [
           {
-            id: uuidv4(),
+            id: v4(),
             name: 'Greek Yogurt',
             amount: 200,
             unit: 'g',
@@ -405,7 +408,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
   private getFallbackNutritionTips() {
     return [
       {
-        id: uuidv4(),
+        id: v4(),
         type: 'tip',
         title: 'Stay Hydrated',
         description: 'Aim for 8 glasses of water daily for optimal health',
@@ -414,7 +417,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
         actionable: true
       },
       {
-        id: uuidv4(),
+        id: v4(),
         type: 'suggestion',
         title: 'Add More Protein',
         description: 'Include protein in every meal to support muscle health',

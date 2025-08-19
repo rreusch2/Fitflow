@@ -135,6 +135,51 @@ enum MuscleGroup: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - Food Item
+struct FoodItem: Codable, Identifiable {
+    let id: UUID
+    let name: String
+    let brand: String?
+    let calories: Int // per 100g
+    let macros: MacroBreakdown
+    let micronutrients: [String: Double]?
+    let servingSize: Double // in grams
+    let servingSizeUnit: String // e.g., "g", "ml", "piece"
+    let barcode: String?
+    let verified: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, brand, calories, macros, micronutrients, barcode, verified, createdAt, updatedAt
+        case servingSize = "serving_size"
+        case servingSizeUnit = "serving_size_unit"
+    }
+}
+
+// MARK: - Nutrition Goals
+struct NutritionGoals: Codable, Identifiable {
+    let id: UUID
+    let userId: UUID
+    let dailyCalories: Int
+    let macroBreakdown: MacroBreakdown
+    let waterIntake: Double // in liters
+    let mealsPerDay: Int
+    let isActive: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case id, createdAt, updatedAt
+        case userId = "user_id"
+        case dailyCalories = "daily_calories"
+        case macroBreakdown = "macro_breakdown"
+        case waterIntake = "water_intake"
+        case mealsPerDay = "meals_per_day"
+        case isActive = "is_active"
+    }
+}
+
 // MARK: - Meal Plan
 struct MealPlan: Codable, Identifiable {
     let id: UUID
