@@ -435,9 +435,9 @@ extension NutritionAIService {
 
 struct DailySuggestionsRequest: Codable {
     let date: String
-    let goals: NutritionService.NutritionGoals?
+    let goals: NutritionGoals?
     
-    init(date: Date, goals: NutritionService.NutritionGoals?) {
+    init(date: Date, goals: NutritionGoals?) {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         self.date = formatter.string(from: date)
@@ -485,14 +485,16 @@ struct DailySuggestionsResponse: Codable {
 }
 
 struct WeeklyMealPlanRequest: Codable {
-    let preferences: MealPlanPreferences
     let startDate: String
+    let targetCalories: Int
+    let dietaryRestrictions: [String]
     
-    init(preferences: MealPlanPreferences, startDate: Date) {
+    init(startDate: Date, targetCalories: Int = 2000, dietaryRestrictions: [String] = []) {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        self.preferences = preferences
         self.startDate = formatter.string(from: startDate)
+        self.targetCalories = targetCalories
+        self.dietaryRestrictions = dietaryRestrictions
     }
 }
 

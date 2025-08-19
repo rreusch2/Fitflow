@@ -32,6 +32,8 @@ struct DietAnalysisView: View {
                     
                     // Recommendations Tab
                     recommendationsTab
+                        .foregroundColor(statusColor)
+                        .padding(.vertical, 2)
                         .tag(2)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -620,7 +622,7 @@ struct RecommendationCard: View {
         hydrationStatus: NutritionAIService.DietAnalysis.HydrationStatus(
             description: "Good",
             emoji: "💧",
-            color: .blue
+            color: "blue"
         ),
         recommendations: NutritionAIService.DietAnalysis.Recommendations(
             priority: [],

@@ -468,21 +468,19 @@ struct EditMealView: View {
 #Preview {
     let meal = Meal(
         id: UUID(),
-        userId: UUID(),
-        name: "Grilled Chicken Salad",
         type: .lunch,
+        name: "Grilled Chicken Salad",
+        description: "Mixed greens with grilled chicken breast",
+        calories: 450,
+        macros: MacroBreakdown(protein: 35, carbs: 15, fat: 28, fiber: 8, sugar: 5, sodium: 400),
         ingredients: [],
         instructions: [],
         prepTime: 15,
         cookTime: 10,
         servings: 1,
         difficulty: .beginner,
-        calories: 450,
-        macros: MacroBreakdown(protein: 35, carbs: 15, fat: 28, fiber: 8, sugar: 5, sodium: 400),
         tags: ["healthy", "protein"],
-        imageUrl: nil,
-        description: "Mixed greens with grilled chicken breast",
-        timestamp: Date()
+        imageUrl: nil
     )
     MealDetailView(meal: meal)
     .environmentObject(ThemeProvider())

@@ -430,17 +430,6 @@ struct NutritionGoalsRequest: Codable {
     }
 }
 
-struct NutritionGoalsResponse: Codable {
-    let goals: NutritionGoals
-    let createdAt: String
-    let updatedAt: String
-    
-    enum CodingKeys: String, CodingKey {
-        case goals
-        case createdAt = "created_at"
-        case updatedAt = "updated_at"
-    }
-}
 
 struct NutritionSummaryResponse: Codable {
     let calories: Double

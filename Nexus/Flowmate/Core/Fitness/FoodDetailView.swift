@@ -276,8 +276,6 @@ struct ReferenceRow: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(themeProvider.theme.textPrimary)
         }
-    }
-}
 
 #Preview {
     FoodDetailView(
@@ -285,12 +283,15 @@ struct ReferenceRow: View {
             id: UUID(),
             name: "Chicken Breast",
             brand: "Organic Valley",
-            serving: "100g",
             calories: 165,
             macros: MacroBreakdown(protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 70),
-            tags: ["protein", "meat"],
-            isPublic: true,
-            source: "nutrition-database"
+            micronutrients: nil,
+            servingSize: 100.0,
+            servingSizeUnit: "g",
+            barcode: nil,
+            verified: true,
+            createdAt: Date(),
+            updatedAt: Date()
         )
     ) { _ in }
     .environmentObject(ThemeProvider())

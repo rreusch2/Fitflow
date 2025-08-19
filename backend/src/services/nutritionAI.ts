@@ -362,7 +362,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
 
   private getFallbackWeeklyPlan() {
     return {
-      id: uuidv4(),
+      id: v4(),
       title: 'Balanced Weekly Plan',
       description: 'Simple, nutritious meals for the week',
       targetCalories: 2000,
