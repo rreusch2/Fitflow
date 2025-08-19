@@ -2,21 +2,50 @@
 //  NutritionService.swift
 //  Flowmate
 //
-//  Real nutrition service with backend API integration
+//  Comprehensive nutrition service with database integration
 //
 
 import Foundation
 import Combine
 
+@MainActor
 final class NutritionService: ObservableObject {
     static let shared = NutritionService()
-    private let databaseService = DatabaseService.shared
-    private init() {}
     
-    // MARK: - Models used by the view
+    @Published var goals: NutritionGoals?
+    @Published var todaySummary: NutritionSummary?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    
+    private var cancellables = Set<AnyCancellable>()
+    private let database = DatabaseService.shared
+    
+    private init() {
+        setupObservers()
+    }
+    
+    private func setupObservers() {
+        // Listen for authentication changes
+        database.$user
+            .compactMap { $0 }
+            .sink { [weak self] _ in
+                Task {
+                    await self?.loadUserData()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Data Models
+    
     struct NutritionGoals {
         var targetCalories: Int?
         var targetMacros: TargetMacros?
+        var dietPreferences: DietPreferences?
+        var exclusions: [String]
+        var optInDailyAI: Bool
+        var preferredAITime: Date?
+        var timezone: String?
         
         struct TargetMacros {
             var protein: Double?
@@ -24,9 +53,11 @@ final class NutritionService: ObservableObject {
             var fat: Double?
         }
         
-        init(targetCalories: Int? = nil, targetMacros: TargetMacros? = nil) {
-            self.targetCalories = targetCalories
-            self.targetMacros = targetMacros
+        struct DietPreferences {
+            var dietType: String? // "vegetarian", "vegan", "keto", etc.
+            var allergies: [String]
+            var dislikes: [String]
+            var cuisinePreferences: [String]
         }
     }
     
@@ -35,364 +66,532 @@ final class NutritionService: ObservableObject {
         var protein: Double
         var carbs: Double
         var fat: Double
+        var fiber: Double
+        var sugar: Double
+        var sodium: Double
+        var mealsLogged: Int
+        var lastUpdated: Date
     }
     
-    @Published var goals: NutritionGoals?
-    @Published var todaySummary: NutritionSummary?
-    @Published var isLoading = false
-    @Published var error: String?
+    struct MealLog {
+        let id: UUID
+        let userId: UUID
+        let loggedAt: Date
+        let mealType: MealType
+        let items: [MealLogItem]
+        let totals: NutritionTotals
+        let source: String
+        let notes: String?
+        
+        struct MealLogItem {
+            let foodId: UUID?
+            let name: String
+            let amount: Double
+            let unit: String
+            let calories: Int
+            let macros: MacroBreakdown
+        }
+        
+        struct NutritionTotals {
+            let calories: Double
+            let protein: Double
+            let carbs: Double
+            let fat: Double
+            let fiber: Double
+        }
+    }
     
-    // MARK: - API surface used by the view
-    func fetchGoals() async {
-        await MainActor.run { isLoading = true }
+    // MARK: - Public Methods
+    
+    func loadUserData() async {
+        guard let user = database.user else { return }
+        
+        isLoading = true
+        defer { isLoading = false }
         
         do {
-            let response: GoalsResponse = try await databaseService.request(
-                endpoint: "/nutrition/goals",
-                method: "GET"
-            )
+            async let goalsTask = fetchGoals()
+            async let summaryTask = getTodaySummary()
             
-            await MainActor.run {
-                if let goalsData = response.goals {
-                    let targetMacros = goalsData.target_macros.map { macros in
-                        NutritionGoals.TargetMacros(
-                            protein: macros.protein,
-                            carbs: macros.carbs,
-                            fat: macros.fat
-                        )
-                    }
-                    
-                    self.goals = NutritionGoals(
-                        targetCalories: goalsData.target_calories,
-                        targetMacros: targetMacros
-                    )
-                } else {
-                    // Set default goals
-                    self.goals = NutritionGoals(
-                        targetCalories: 2200,
-                        targetMacros: .init(protein: 160, carbs: 220, fat: 70)
-                    )
-                }
-                isLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                self.error = error.localizedDescription
-                // Use defaults on error
-                self.goals = NutritionGoals(
-                    targetCalories: 2200,
-                    targetMacros: .init(protein: 160, carbs: 220, fat: 70)
-                )
-                isLoading = false
-            }
-        }
-    }
-    
-    func getSummary(start: Date, end: Date) async throws -> NutritionSummary? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        
-        let response: SummaryResponse = try await databaseService.request(
-            endpoint: "/nutrition/summary",
-            method: "GET",
-            queryItems: [
-                URLQueryItem(name: "start_date", value: formatter.string(from: start)),
-                URLQueryItem(name: "end_date", value: formatter.string(from: end))
-            ]
-        )
-        
-        let summary = NutritionSummary(
-            calories: response.summary.calories,
-            protein: response.summary.protein,
-            carbs: response.summary.carbs,
-            fat: response.summary.fat
-        )
-        
-        await MainActor.run {
+            let (goals, summary) = await (goalsTask, summaryTask)
+            self.goals = goals
             self.todaySummary = summary
-        }
-        
-        return summary
-    }
-    
-    func savePlan(for date: Date, meals: [Meal]) async throws -> Bool {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        
-        let body: [String: Any] = [
-            "date": formatter.string(from: date),
-            "meals": meals.map { meal in
-                [
-                    "id": meal.id.uuidString,
-                    "type": meal.type.rawValue,
-                    "name": meal.name,
-                    "description": meal.description,
-                    "calories": meal.calories,
-                    "macros": [
-                        "protein": meal.macros.protein,
-                        "carbs": meal.macros.carbs,
-                        "fat": meal.macros.fat,
-                        "fiber": meal.macros.fiber
-                    ],
-                    "ingredients": meal.ingredients.map { ingredient in
-                        [
-                            "id": ingredient.id.uuidString,
-                            "name": ingredient.name,
-                            "amount": ingredient.amount,
-                            "unit": ingredient.unit,
-                            "calories": ingredient.calories,
-                            "macros": [
-                                "protein": ingredient.macros.protein,
-                                "carbs": ingredient.macros.carbs,
-                                "fat": ingredient.macros.fat,
-                                "fiber": ingredient.macros.fiber
-                            ]
-                        ]
-                    }
-                ]
-            }
-        ]
-        
-        let _: PlanResponse = try await databaseService.request(
-            endpoint: "/nutrition/plan/add",
-            method: "POST",
-            body: body
-        )
-        
-        return true
-    }
-    
-    func logMeal(mealType: MealType, items: [Ingredient], source: String) async throws -> Bool {
-        let body: [String: Any] = [
-            "meal_type": mealType.rawValue,
-            "source": source,
-            "items": items.map { ingredient in
-                [
-                    "id": ingredient.id.uuidString,
-                    "name": ingredient.name,
-                    "amount": ingredient.amount,
-                    "unit": ingredient.unit,
-                    "calories": ingredient.calories,
-                    "macros": [
-                        "protein": ingredient.macros.protein,
-                        "carbs": ingredient.macros.carbs,
-                        "fat": ingredient.macros.fat,
-                        "fiber": ingredient.macros.fiber
-                    ]
-                ]
-            }
-        ]
-        
-        let _: LogResponse = try await databaseService.request(
-            endpoint: "/nutrition/log",
-            method: "POST",
-            body: body
-        )
-        
-        return true
-    }
-    
-    func updateGoals(targetCalories: Int, targetMacros: NutritionGoals.TargetMacros) async throws -> Bool {
-        let body: [String: Any] = [
-            "target_calories": targetCalories,
-            "target_macros": [
-                "protein": targetMacros.protein ?? 0,
-                "carbs": targetMacros.carbs ?? 0,
-                "fat": targetMacros.fat ?? 0
-            ],
-            "opt_in_daily_ai": true
-        ]
-        
-        let _: GoalsResponse = try await databaseService.request(
-            endpoint: "/nutrition/goals",
-            method: "POST",
-            body: body
-        )
-        
-        return true
-    }
-}
-
-// MARK: - Response Models
-struct GoalsResponse: Codable {
-    let goals: GoalsData?
-    
-    struct GoalsData: Codable {
-        let target_calories: Int?
-        let target_macros: TargetMacros?
-        
-        struct TargetMacros: Codable {
-            let protein: Double?
-            let carbs: Double?
-            let fat: Double?
-        }
-    }
-}
-
-struct SummaryResponse: Codable {
-    let summary: SummaryData
-    
-    struct SummaryData: Codable {
-        let calories: Double
-        let protein: Double
-        let carbs: Double
-        let fat: Double
-        let fiber: Double
-        let entries_count: Int
-    }
-}
-
-struct PlanResponse: Codable {
-    let plan: PlanData?
-    
-    struct PlanData: Codable {
-        let id: String
-        let date: String
-    }
-}
-
-struct LogResponse: Codable {
-    let log: LogData
-    
-    struct LogData: Codable {
-        let id: String
-        let meal_type: String
-        let logged_at: String
-    }
-}
-
-// MARK: - Nutrition Preferences Extension
-extension NutritionService {
-    func getNutritionPreferences() async throws -> NutritionPreferences? {
-        do {
-            let response: PreferencesResponse = try await databaseService.request(
-                endpoint: "/nutrition/preferences",
-                method: "GET",
-                body: [:] as [String: Any]
-            )
-            return convertToNutritionPreferences(response.preferences)
+            
         } catch {
-            print("Failed to load nutrition preferences: \(error)")
+            errorMessage = "Failed to load nutrition data: \(error.localizedDescription)"
+        }
+    }
+    
+    func fetchGoals() async -> NutritionGoals? {
+        guard let user = database.user else { return nil }
+        
+        do {
+            let response = try await database.supabase
+                .from("nutrition_goals")
+                .select("*")
+                .eq("user_id", value: user.id.uuidString)
+                .single()
+                .execute()
+            
+            let data = response.data
+            return try JSONDecoder().decode(NutritionGoalsResponse.self, from: data).toNutritionGoals()
+            
+        } catch {
+            // Return default goals if none exist
+            return createDefaultGoals(for: user)
+        }
+    }
+    
+    func updateGoals(_ goals: NutritionGoals) async throws {
+        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        let goalsData = NutritionGoalsRequest(from: goals, userId: user.id)
+        
+        try await database.supabase
+            .from("nutrition_goals")
+            .upsert(goalsData)
+            .execute()
+        
+        self.goals = goals
+    }
+    
+    func getTodaySummary() async -> NutritionSummary? {
+        return await getSummary(start: Calendar.current.startOfDay(for: Date()), end: Date())
+    }
+    
+    func getSummary(start: Date, end: Date) async -> NutritionSummary? {
+        guard let user = database.user else { return nil }
+        
+        do {
+            let response = try await database.supabase
+                .rpc("get_nutrition_summary", params: [
+                    "user_id": user.id.uuidString,
+                    "start_date": ISO8601DateFormatter().string(from: start),
+                    "end_date": ISO8601DateFormatter().string(from: end)
+                ])
+                .execute()
+            
+            let data = response.data
+            return try JSONDecoder().decode(NutritionSummaryResponse.self, from: data).toNutritionSummary()
+            
+        } catch {
+            print("Error fetching nutrition summary: \(error)")
             return nil
         }
     }
     
-    func saveNutritionPreferences(_ preferences: NutritionPreferences) async throws {
-        let requestBody: [String: Any] = [
-            "dietary_restrictions": Array(preferences.dietaryRestrictions.map { $0.rawValue }),
-            "preferred_cuisines": Array(preferences.preferredCuisines.map { $0.rawValue }),
-            "disliked_foods": Array(preferences.dislikedFoods.map { $0.rawValue }),
-            "meals_per_day": preferences.mealsPerDay,
-            "max_prep_time": preferences.maxPrepTime.rawValue,
-            "cooking_skill": preferences.cookingSkill.rawValue,
-            "include_snacks": preferences.includeSnacks,
-            "meal_prep_friendly": preferences.mealPrepFriendly,
-            "budget_level": preferences.budgetLevel.rawValue,
-            "prefer_local_seasonal": preferences.preferLocalSeasonal,
-            "consider_workout_schedule": preferences.considerWorkoutSchedule,
-            "optimize_for_recovery": preferences.optimizeForRecovery,
-            "include_supplements": preferences.includeSupplements
-        ]
+    func logMeal(mealType: MealType, items: [Ingredient], source: String = "manual", notes: String? = nil) async throws -> Bool {
+        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
         
-        let _: PreferencesSaveResponse = try await databaseService.request(
-            endpoint: "/nutrition/preferences",
-            method: "POST",
-            body: requestBody
-        )
-    }
-    
-    private func convertToNutritionPreferences(_ data: PreferencesData) -> NutritionPreferences {
-        var preferences = NutritionPreferences()
+        isLoading = true
+        defer { isLoading = false }
         
-        // Convert arrays back to sets
-        preferences.dietaryRestrictions = Set(data.dietary_restrictions?.compactMap { DietaryRestriction(rawValue: $0) } ?? [])
-        preferences.preferredCuisines = Set(data.preferred_cuisines?.compactMap { CuisineType(rawValue: $0) } ?? [])
-        preferences.dislikedFoods = Set(data.disliked_foods?.compactMap { CommonFood(rawValue: $0) } ?? [])
+        // Calculate totals
+        let totals = calculateTotals(from: items)
         
-        preferences.mealsPerDay = data.meals_per_day ?? 3
-        preferences.maxPrepTime = PrepTimePreference(rawValue: data.max_prep_time ?? "medium") ?? .medium
-        preferences.cookingSkill = CookingSkill(rawValue: data.cooking_skill ?? "intermediate") ?? .intermediate
-        preferences.includeSnacks = data.include_snacks ?? true
-        preferences.mealPrepFriendly = data.meal_prep_friendly ?? false
-        preferences.budgetLevel = BudgetLevel(rawValue: data.budget_level ?? "moderate") ?? .moderate
-        preferences.preferLocalSeasonal = data.prefer_local_seasonal ?? false
-        preferences.considerWorkoutSchedule = data.consider_workout_schedule ?? true
-        preferences.optimizeForRecovery = data.optimize_for_recovery ?? false
-        preferences.includeSupplements = data.include_supplements ?? false
+        // Convert ingredients to meal log items
+        let logItems = items.map { ingredient in
+            MealLog.MealLogItem(
+                foodId: ingredient.id,
+                name: ingredient.name,
+                amount: ingredient.amount,
+                unit: ingredient.unit,
+                calories: ingredient.calories,
+                macros: ingredient.macros
+            )
+        }
         
-        return preferences
-    }
-}
-
-// MARK: - Preferences Response Models
-struct PreferencesResponse: Codable {
-    let preferences: PreferencesData
-}
-
-struct PreferencesData: Codable {
-    let dietary_restrictions: [String]?
-    let preferred_cuisines: [String]?
-    let disliked_foods: [String]?
-    let meals_per_day: Int?
-    let max_prep_time: String?
-    let cooking_skill: String?
-    let include_snacks: Bool?
-    let meal_prep_friendly: Bool?
-    let budget_level: String?
-    let prefer_local_seasonal: Bool?
-    let consider_workout_schedule: Bool?
-    let optimize_for_recovery: Bool?
-    let include_supplements: Bool?
-}
-
-struct PreferencesSaveResponse: Codable {
-    let success: Bool
-    let message: String?
-}
-
-// MARK: - Quick Add Calories
-extension NutritionService {
-    func quickAddCalories(calories: Int, description: String?, mealType: MealType) async throws -> Bool {
-        let requestBody: [String: Any] = [
-            "calories": calories,
-            "description": description ?? "Quick add - \(calories) calories",
-            "meal_type": mealType.rawValue
-        ]
-        
-        let response: QuickAddResponse = try await databaseService.request(
-            endpoint: "/nutrition/quick-add",
-            method: "POST",
-            body: requestBody
+        let mealLogData = MealLogRequest(
+            userId: user.id,
+            loggedAt: Date(),
+            mealType: mealType.rawValue,
+            items: logItems,
+            totals: totals,
+            source: source,
+            notes: notes
         )
         
-        // Refresh today's summary after adding calories
-        await refreshTodaySummary()
+        try await database.supabase
+            .from("meal_logs")
+            .insert(mealLogData)
+            .execute()
         
-        return response.success
+        // Refresh today's summary
+        todaySummary = await getTodaySummary()
+        
+        return true
     }
     
-    private func refreshTodaySummary() async {
-        do {
-            let today = Date()
-            let summary = try await getSummary(start: today, end: today)
-            await MainActor.run {
-                self.todaySummary = summary
+    func savePlan(for date: Date, meals: [Meal]) async throws -> Bool {
+        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        let mealPlanData = MealPlanDayRequest(
+            userId: user.id,
+            date: date,
+            meals: meals.map { meal in
+                MealPlanMeal(
+                    id: meal.id,
+                    type: meal.type.rawValue,
+                    name: meal.name,
+                    description: meal.description,
+                    calories: meal.calories,
+                    macros: meal.macros,
+                    ingredients: meal.ingredients
+                )
             }
+        )
+        
+        try await database.supabase
+            .from("meal_plan_days")
+            .upsert(mealPlanData)
+            .execute()
+        
+        return true
+    }
+    
+    func getMealPlan(for date: Date) async -> [Meal]? {
+        guard let user = database.user else { return nil }
+        
+        do {
+            let dateString = ISO8601DateFormatter().string(from: date).prefix(10) // YYYY-MM-DD
+            let response = try await database.supabase
+                .from("meal_plan_days")
+                .select("meals")
+                .eq("user_id", value: user.id.uuidString)
+                .eq("date", value: String(dateString))
+                .single()
+                .execute()
+            
+            let data = response.data
+            let mealPlanResponse = try JSONDecoder().decode(MealPlanDayResponse.self, from: data)
+            return mealPlanResponse.meals.compactMap { $0.toMeal() }
+            
         } catch {
-            print("Failed to refresh today's summary: \(error)")
+            print("Error fetching meal plan: \(error)")
+            return nil
         }
     }
+    
+    func searchFoodItems(query: String) async -> [FoodItem] {
+        guard let user = database.user else { return [] }
+        
+        do {
+            let response = try await database.supabase
+                .from("food_items")
+                .select("*")
+                .or("name.ilike.%\(query)%,brand.ilike.%\(query)%")
+                .or("user_id.is.null,user_id.eq.\(user.id.uuidString)")
+                .limit(20)
+                .execute()
+            
+            let data = response.data
+            return try JSONDecoder().decode([FoodItemResponse].self, from: data).map { $0.toFoodItem() }
+            
+        } catch {
+            print("Error searching food items: \(error)")
+            return []
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func createDefaultGoals(for user: User) -> NutritionGoals {
+        // Calculate basic TDEE-based goals
+        let baseCalories = calculateBaseTDEE(for: user)
+        let protein = Double(baseCalories) * 0.3 / 4 // 30% of calories from protein
+        let carbs = Double(baseCalories) * 0.4 / 4 // 40% from carbs
+        let fat = Double(baseCalories) * 0.3 / 9 // 30% from fat
+        
+        return NutritionGoals(
+            targetCalories: baseCalories,
+            targetMacros: NutritionGoals.TargetMacros(
+                protein: protein,
+                carbs: carbs,
+                fat: fat
+            ),
+            dietPreferences: nil,
+            exclusions: [],
+            optInDailyAI: true,
+            preferredAITime: nil,
+            timezone: TimeZone.current.identifier
+        )
+    }
+    
+    private func calculateBaseTDEE(for user: User) -> Int {
+        // Simple TDEE calculation - can be enhanced with health profile data
+        return user.preferences?.fitness.level == .beginner ? 2000 : 2200
+    }
+    
+    private func calculateTotals(from items: [Ingredient]) -> MealLog.NutritionTotals {
+        let calories = items.reduce(0.0) { $0 + Double($1.calories) }
+        let protein = items.reduce(0.0) { $0 + $1.macros.protein }
+        let carbs = items.reduce(0.0) { $0 + $1.macros.carbs }
+        let fat = items.reduce(0.0) { $0 + $1.macros.fat }
+        let fiber = items.reduce(0.0) { $0 + $1.macros.fiber }
+        
+        return MealLog.NutritionTotals(
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: fiber
+        )
+    }
 }
 
-struct QuickAddResponse: Codable {
-    let success: Bool
-    let log: QuickAddLogData?
+// MARK: - Data Transfer Objects
+
+struct NutritionGoalsResponse: Codable {
+    let targetCalories: Int?
+    let targetMacros: [String: Double]?
+    let dietPreferences: [String: Any]?
+    let exclusions: [String]?
+    let optInDailyAI: Bool?
+    let preferredAITimeLocal: String?
+    let preferredTimezone: String?
     
-    struct QuickAddLogData: Codable {
-        let id: String
-        let calories: Int
-        let description: String
-        let meal_type: String
-        let logged_at: String
+    enum CodingKeys: String, CodingKey {
+        case targetCalories = "target_calories"
+        case targetMacros = "target_macros"
+        case dietPreferences = "diet_preferences"
+        case exclusions
+        case optInDailyAI = "opt_in_daily_ai"
+        case preferredAITimeLocal = "preferred_ai_time_local"
+        case preferredTimezone = "preferred_timezone"
+    }
+    
+    func toNutritionGoals() -> NutritionService.NutritionGoals {
+        let macros = targetMacros.map {
+            NutritionService.NutritionGoals.TargetMacros(
+                protein: $0["protein"],
+                carbs: $0["carbs"],
+                fat: $0["fat"]
+            )
+        }
+        
+        return NutritionService.NutritionGoals(
+            targetCalories: targetCalories,
+            targetMacros: macros,
+            dietPreferences: nil, // TODO: Parse diet preferences JSON
+            exclusions: exclusions ?? [],
+            optInDailyAI: optInDailyAI ?? true,
+            preferredAITime: nil, // TODO: Parse time string
+            timezone: preferredTimezone
+        )
+    }
+}
+
+struct NutritionGoalsRequest: Codable {
+    let userId: UUID
+    let targetCalories: Int?
+    let targetMacros: [String: Double]?
+    let dietPreferences: [String: Any]?
+    let exclusions: [String]
+    let optInDailyAI: Bool
+    let preferredAITimeLocal: String?
+    let preferredTimezone: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case targetCalories = "target_calories"
+        case targetMacros = "target_macros"
+        case dietPreferences = "diet_preferences"
+        case exclusions
+        case optInDailyAI = "opt_in_daily_ai"
+        case preferredAITimeLocal = "preferred_ai_time_local"
+        case preferredTimezone = "preferred_timezone"
+    }
+    
+    init(from goals: NutritionService.NutritionGoals, userId: UUID) {
+        self.userId = userId
+        self.targetCalories = goals.targetCalories
+        self.targetMacros = goals.targetMacros.map { macros in
+            return [
+                "protein": macros.protein ?? 0,
+                "carbs": macros.carbs ?? 0,
+                "fat": macros.fat ?? 0
+            ]
+        }
+        self.dietPreferences = [:] // TODO: Convert diet preferences
+        self.exclusions = goals.exclusions
+        self.optInDailyAI = goals.optInDailyAI
+        self.preferredAITimeLocal = nil // TODO: Convert time to string
+        self.preferredTimezone = goals.timezone
+    }
+}
+
+struct NutritionSummaryResponse: Codable {
+    let calories: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let fiber: Double
+    let sugar: Double
+    let sodium: Double
+    let mealsLogged: Int
+    let lastUpdated: String
+    
+    enum CodingKeys: String, CodingKey {
+        case calories, protein, carbs, fat, fiber, sugar, sodium
+        case mealsLogged = "meals_logged"
+        case lastUpdated = "last_updated"
+    }
+    
+    func toNutritionSummary() -> NutritionService.NutritionSummary {
+        let formatter = ISO8601DateFormatter()
+        let lastUpdate = formatter.date(from: lastUpdated) ?? Date()
+        
+        return NutritionService.NutritionSummary(
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: fiber,
+            sugar: sugar,
+            sodium: sodium,
+            mealsLogged: mealsLogged,
+            lastUpdated: lastUpdate
+        )
+    }
+}
+
+struct MealLogRequest: Codable {
+    let userId: UUID
+    let loggedAt: Date
+    let mealType: String
+    let items: [NutritionService.MealLog.MealLogItem]
+    let totals: NutritionService.MealLog.NutritionTotals
+    let source: String
+    let notes: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case loggedAt = "logged_at"
+        case mealType = "meal_type"
+        case items, totals, source, notes
+    }
+}
+
+struct MealPlanDayRequest: Codable {
+    let userId: UUID
+    let date: Date
+    let meals: [MealPlanMeal]
+    
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case date, meals
+    }
+}
+
+struct MealPlanMeal: Codable {
+    let id: UUID
+    let type: String
+    let name: String
+    let description: String?
+    let calories: Int
+    let macros: MacroBreakdown
+    let ingredients: [Ingredient]
+    
+    func toMeal() -> Meal? {
+        guard let mealType = MealType(rawValue: type) else { return nil }
+        
+        return Meal(
+            id: id,
+            type: mealType,
+            name: name,
+            description: description ?? "",
+            calories: calories,
+            macros: macros,
+            ingredients: ingredients,
+            instructions: [],
+            prepTime: 0,
+            cookTime: 0,
+            servings: 1,
+            difficulty: .beginner,
+            tags: [],
+            imageUrl: nil
+        )
+    }
+}
+
+struct MealPlanDayResponse: Codable {
+    let meals: [MealPlanMeal]
+}
+
+struct FoodItem {
+    let id: UUID
+    let name: String
+    let brand: String?
+    let serving: String
+    let calories: Int
+    let macros: MacroBreakdown
+    let tags: [String]
+    let isPublic: Bool
+    let source: String?
+}
+
+struct FoodItemResponse: Codable {
+    let id: UUID
+    let name: String
+    let brand: String?
+    let serving: String
+    let calories: Int
+    let macros: [String: Double]
+    let tags: [String]
+    let isPublic: Bool
+    let source: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, brand, serving, calories, macros, tags, source
+        case isPublic = "is_public"
+    }
+    
+    func toFoodItem() -> FoodItem {
+        let macroBreakdown = MacroBreakdown(
+            protein: macros["protein"] ?? 0,
+            carbs: macros["carbs"] ?? 0,
+            fat: macros["fat"] ?? 0,
+            fiber: macros["fiber"] ?? 0
+        )
+        
+        return FoodItem(
+            id: id,
+            name: name,
+            brand: brand,
+            serving: serving,
+            calories: calories,
+            macros: macroBreakdown,
+            tags: tags,
+            isPublic: isPublic,
+            source: source
+        )
+    }
+}
+
+// MARK: - Errors
+
+enum NutritionError: LocalizedError {
+    case userNotAuthenticated
+    case invalidMealData
+    case networkError
+    case databaseError(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .userNotAuthenticated:
+            return "User must be authenticated to access nutrition data"
+        case .invalidMealData:
+            return "Invalid meal data provided"
+        case .networkError:
+            return "Network error occurred"
+        case .databaseError(let message):
+            return "Database error: \(message)"
+        }
     }
 }

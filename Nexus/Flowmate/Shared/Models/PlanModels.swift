@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 // MARK: - Workout Plan
 struct WorkoutPlan: Codable, Identifiable {
@@ -233,6 +234,28 @@ enum MealType: String, Codable, CaseIterable {
         case .snack: return "leaf.fill"
         case .preworkout: return "bolt.fill"
         case .postworkout: return "checkmark.circle.fill"
+        }
+    }
+    
+    var emoji: String {
+        switch self {
+        case .breakfast: return "🌅"
+        case .lunch: return "☀️"
+        case .dinner: return "🌙"
+        case .snack: return "🍎"
+        case .preworkout: return "⚡"
+        case .postworkout: return "💪"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .breakfast: return .orange
+        case .lunch: return .yellow
+        case .dinner: return .purple
+        case .snack: return .green
+        case .preworkout: return .blue
+        case .postworkout: return .red
         }
     }
 }

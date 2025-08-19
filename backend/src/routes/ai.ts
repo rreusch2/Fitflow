@@ -1,10 +1,12 @@
 import { FastifyInstance } from 'fastify';
 import { GenerateWorkoutPlanSchema, GenerateMealPlanSchema } from '../schemas/ai';
 import { AIService } from '../services/ai';
+import { NutritionAIService } from '../services/nutritionAI';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export async function aiRoutes(server: FastifyInstance) {
   const aiService = new AIService();
+  const nutritionAI = new NutritionAIService();
 
   // Generate workout plan
   server.post('/workout-plan', {
@@ -131,77 +133,127 @@ export async function aiRoutes(server: FastifyInstance) {
   });
 
   // Generate daily meal suggestions
-  server.post('/meal-suggestions', async (request, reply) => {
+  server.post('/daily-meal-suggestions', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
-    const { date, force_regenerate } = request.body as { date?: string; force_regenerate?: boolean };
-    const targetDate = date ? new Date(date) : new Date();
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const { date, goals } = request.body as any;
 
     try {
-      // Check if we already have suggestions for this date
-      if (!force_regenerate) {
-        const { data: existing } = await server.supabase
-          .from('ai_meal_suggestions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('date', dateStr)
-          .single();
+      // Get user preferences and health profile
+      const { data: preferences } = await server.supabase
+        .from('user_preferences')
+        .select('nutrition')
+        .eq('user_id', userId)
+        .single();
 
-        if (existing) {
-          return { suggestions: existing.meals, cached: true };
-        }
-      }
+      const { data: nutritionGoals } = await server.supabase
+        .from('nutrition_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-      // Get user preferences and nutrition goals
-      const [preferencesResult, nutritionGoalsResult] = await Promise.all([
-        server.supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
-        server.supabase.from('nutrition_goals').select('*').eq('user_id', userId).single()
-      ]);
+      const { data: healthProfile } = await server.supabase
+        .from('health_profile')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-      const preferences = preferencesResult.data || {};
-      const nutritionGoals = nutritionGoalsResult.data || {};
-
-      // Generate AI meal suggestions
-      const suggestions = await aiService.generateDailyMealSuggestions({
+      // Generate suggestions with AI
+      const suggestions = await nutritionAI.generateDailySuggestions({
         userId,
-        date: targetDate,
-        preferences,
-        nutritionGoals
+        date: new Date(date),
+        preferences: preferences?.nutrition || {},
+        nutritionGoals: nutritionGoals || {},
+        healthProfile: healthProfile || {}
       });
 
-      // Save suggestions to database
-      const { error: saveError } = await server.supabase
+      // Cache suggestions in database
+      await server.supabase
         .from('ai_meal_suggestions')
         .upsert({
           user_id: userId,
-          date: dateStr,
-          meals: suggestions,
-          prompt_hash: 'daily_suggestions_v1',
+          date: date,
+          meals: suggestions.suggestions,
           provider: 'grok',
-          tokens_used: 1500, // Estimate
-          cost_cents: 3
+          tokens_used: suggestions.tokensUsed,
+          cost_cents: suggestions.costCents
         });
 
-      if (saveError) {
-        server.log.error({ err: saveError }, 'Error saving meal suggestions');
-      }
-
-      return { suggestions, cached: false };
+      return { suggestions: suggestions.suggestions };
     } catch (error) {
-      server.log.error({ err: error }, 'Error generating meal suggestions');
+      server.log.error({ err: error }, 'Error generating daily meal suggestions');
       return reply.code(500).send({ error: 'Failed to generate meal suggestions' });
     }
   });
 
-  // Analyze current diet
+  // Generate weekly meal plan
+  server.post('/weekly-meal-plan', async (request, reply) => {
+    const userId = (request.authUser as { id: string }).id;
+    const { preferences, startDate } = request.body as any;
+
+    try {
+      // Get user data
+      const { data: userPrefs } = await server.supabase
+        .from('user_preferences')
+        .select('nutrition')
+        .eq('user_id', userId)
+        .single();
+
+      const { data: nutritionGoals } = await server.supabase
+        .from('nutrition_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      const { data: healthProfile } = await server.supabase
+        .from('health_profile')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      // Generate weekly meal plan with AI
+      const mealPlan = await nutritionAI.generateWeeklyMealPlan({
+        userId,
+        preferences: { ...userPrefs?.nutrition, ...preferences },
+        nutritionGoals: nutritionGoals || {},
+        healthProfile: healthProfile || {},
+        startDate: new Date(startDate)
+      });
+
+      // Save to database
+      const { data: savedPlan } = await server.supabase
+        .from('meal_plans')
+        .insert({
+          id: mealPlan.id,
+          user_id: userId,
+          title: mealPlan.title,
+          description: mealPlan.description,
+          target_calories: mealPlan.targetCalories,
+          macro_breakdown: mealPlan.macroBreakdown,
+          meals: mealPlan.meals,
+          shopping_list: mealPlan.shoppingList,
+          prep_time: mealPlan.prepTime,
+          ai_generated_notes: mealPlan.aiGeneratedNotes
+        })
+        .select()
+        .single();
+
+      return mealPlan;
+    } catch (error) {
+      server.log.error({ err: error }, 'Error generating weekly meal plan');
+      return reply.code(500).send({ error: 'Failed to generate weekly meal plan' });
+    }
+  });
+
+  // Analyze user's diet
   server.post('/analyze-diet', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
-    const { days_back = 7 } = request.body as { days_back?: number };
+    const { days = 7 } = request.body as any;
 
     try {
       // Get recent meal logs
       const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - (days_back * 24 * 60 * 60 * 1000));
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
 
       const { data: mealLogs } = await server.supabase
         .from('meal_logs')
@@ -211,112 +263,73 @@ export async function aiRoutes(server: FastifyInstance) {
         .lte('logged_date_utc', endDate.toISOString().split('T')[0])
         .order('logged_at', { ascending: false });
 
-      // Get nutrition goals
+      // Get user goals and preferences
       const { data: nutritionGoals } = await server.supabase
         .from('nutrition_goals')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      // Get user preferences
-      const { data: preferences } = await server.supabase
-        .from('user_preferences')
+      const { data: healthProfile } = await server.supabase
+        .from('health_profile')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      // Analyze diet with AI
-      const analysis = await aiService.analyzeDiet({
+      // Generate analysis with AI
+      const analysis = await nutritionAI.analyzeDiet({
         userId,
         mealLogs: mealLogs || [],
         nutritionGoals: nutritionGoals || {},
-        preferences: preferences || {},
-        daysBack: days_back
+        healthProfile: healthProfile || {},
+        days
       });
 
-      return { analysis };
+      return analysis;
     } catch (error) {
       server.log.error({ err: error }, 'Error analyzing diet');
       return reply.code(500).send({ error: 'Failed to analyze diet' });
     }
   });
 
-  // Generate personalized nutrition tips
-  server.get('/nutrition-tips', async (request, reply) => {
+  // Get personalized nutrition tips
+  server.post('/nutrition-tips', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
 
     try {
-      // Get recent data for context
-      const today = new Date().toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      // Get user context
+      const { data: recentLogs } = await server.supabase
+        .from('meal_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('logged_date_utc', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('logged_at', { ascending: false })
+        .limit(20);
 
-      const [nutritionGoalsResult, recentLogsResult, preferencesResult] = await Promise.all([
-        server.supabase.from('nutrition_goals').select('*').eq('user_id', userId).single(),
-        server.supabase.from('meal_logs').select('*').eq('user_id', userId).gte('logged_date_utc', weekAgo).lte('logged_date_utc', today),
-        server.supabase.from('user_preferences').select('*').eq('user_id', userId).single()
-      ]);
+      const { data: nutritionGoals } = await server.supabase
+        .from('nutrition_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-      const tips = await aiService.generateNutritionTips({
+      const { data: preferences } = await server.supabase
+        .from('user_preferences')
+        .select('nutrition')
+        .eq('user_id', userId)
+        .single();
+
+      // Generate personalized tips with AI
+      const tips = await nutritionAI.generatePersonalizedTips({
         userId,
-        nutritionGoals: nutritionGoalsResult.data || {},
-        recentLogs: recentLogsResult.data || [],
-        preferences: preferencesResult.data || {}
+        recentMealLogs: recentLogs || [],
+        nutritionGoals: nutritionGoals || {},
+        preferences: preferences?.nutrition || {}
       });
 
       return { tips };
     } catch (error) {
       server.log.error({ err: error }, 'Error generating nutrition tips');
       return reply.code(500).send({ error: 'Failed to generate nutrition tips' });
-    }
-  });
-
-  // Generate weekly meal plan
-  server.post('/weekly-meal-plan', async (request, reply) => {
-    const userId = (request.authUser as { id: string }).id;
-    const { start_date } = request.body as { start_date?: string };
-    const startDate = start_date ? new Date(start_date) : new Date();
-
-    try {
-      // Get user preferences and nutrition goals
-      const [preferencesResult, nutritionGoalsResult] = await Promise.all([
-        server.supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
-        server.supabase.from('nutrition_goals').select('*').eq('user_id', userId).single()
-      ]);
-
-      const weeklyPlan = await aiService.generateWeeklyMealPlan({
-        userId,
-        startDate,
-        preferences: preferencesResult.data || {},
-        nutritionGoals: nutritionGoalsResult.data || {}
-      });
-
-      // Save the weekly plan
-      const { data: savedPlan, error } = await server.supabase
-        .from('meal_plans')
-        .insert({
-          id: weeklyPlan.id,
-          user_id: userId,
-          title: weeklyPlan.title,
-          description: weeklyPlan.description,
-          target_calories: weeklyPlan.target_calories,
-          macro_breakdown: weeklyPlan.macro_breakdown,
-          meals: weeklyPlan.meals,
-          shopping_list: weeklyPlan.shopping_list,
-          prep_time: weeklyPlan.prep_time,
-          ai_generated_notes: weeklyPlan.ai_generated_notes
-        })
-        .select()
-        .single();
-
-      if (error) {
-        server.log.error({ err: error }, 'Error saving weekly meal plan');
-        return reply.code(500).send({ error: 'Failed to save weekly meal plan' });
-      }
-
-      return { plan: savedPlan };
-    } catch (error) {
-      server.log.error({ err: error }, 'Error generating weekly meal plan');
-      return reply.code(500).send({ error: 'Failed to generate weekly meal plan' });
     }
   });
 }

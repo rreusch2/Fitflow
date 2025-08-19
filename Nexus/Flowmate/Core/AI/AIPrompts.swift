@@ -153,7 +153,7 @@ extension AIService {
         }
         
         if !nutrition.dislikedFoods.isEmpty {
-            prompt += "\n- Disliked Foods: \(nutrition.dislikedFoods.map { $0.rawValue }.joined(separator: ", "))"
+            prompt += "\n- Disliked Foods: \(nutrition.dislikedFoods.joined(separator: ", "))"
         }
         
         if let health = healthProfile {
