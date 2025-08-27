@@ -32,7 +32,7 @@ struct DietAnalysisView: View {
                     
                     // Recommendations Tab
                     recommendationsTab
-                        .foregroundColor(statusColor)
+                        .foregroundColor(themeProvider.theme.textPrimary)
                         .padding(.vertical, 2)
                         .tag(2)
                 }
@@ -297,7 +297,7 @@ struct DietAnalysisView: View {
                     Text("Avg Daily")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(themeProvider.theme.textSecondary)
-                    Text("\(analysis.avgDailyWater, specifier: "%.1f")L")
+                    Text(String(format: "%.1f", analysis.avgDailyWater) + "L")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.blue)
                 }
@@ -316,13 +316,13 @@ struct DietAnalysisView: View {
                         .foregroundColor(themeProvider.theme.textSecondary)
                     Text(analysis.hydrationStatus.description)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(analysis.hydrationStatus.color)
+                        .foregroundColor(hydrationStatusColor(analysis.hydrationStatus))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(analysis.hydrationStatus.color.opacity(0.1))
+                        .fill(hydrationStatusColor(analysis.hydrationStatus).opacity(0.1))
                 )
             }
             .padding(.horizontal, 20)
@@ -411,7 +411,7 @@ struct TrendCard: View {
     var body: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(trend.color)
+                .fill(trendColor(trend))
                 .frame(width: 12, height: 12)
             
             Text(trend.title)
@@ -420,7 +420,7 @@ struct TrendCard: View {
             
             Text("\(Int(trend.percentage))%")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(trend.color)
+                .foregroundColor(trendColor(trend))
             Image(systemName: trend.isPositive ? "arrow.up.right" : "arrow.down.right")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(trend.isPositive ? .green : .red)
@@ -504,7 +504,7 @@ struct MacroCircle: View {
 }
 
 struct MicronutrientBar: View {
-    let status: NutritionAIService.DietAnalysis.MicronutrientStatus
+    let status: NutritionAIService.DietAnalysis.NutrientStatus
     @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
@@ -518,7 +518,7 @@ struct MicronutrientBar: View {
                 
                 Text(status.statusText)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(status.statusColor)
+                    .foregroundColor(nutritionStatusColor(status))
             }
             
             GeometryReader { geometry in
@@ -531,7 +531,7 @@ struct MicronutrientBar: View {
                     Rectangle()
                         .fill(
                             LinearGradient(
-                                colors: [status.statusColor.opacity(0.7), status.statusColor],
+                                colors: [nutritionStatusColor(status).opacity(0.7), nutritionStatusColor(status)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -631,4 +631,32 @@ struct RecommendationCard: View {
         )
     ))
     .environmentObject(ThemeProvider())
+}
+
+// MARK: - Color Helper Functions
+
+func hydrationStatusColor(_ status: NutritionAIService.DietAnalysis.HydrationStatus) -> Color {
+    switch status.color.lowercased() {
+    case "blue": return .blue
+    case "green": return .green
+    case "yellow": return .yellow
+    case "orange": return .orange
+    case "red": return .red
+    default: return .blue
+    }
+}
+
+func trendColor(_ trend: NutritionAIService.DietAnalysis.Trend) -> Color {
+    return trend.isPositive ? .green : .red
+}
+
+func nutritionStatusColor(_ status: NutritionAIService.DietAnalysis.NutrientStatus) -> Color {
+    let adequacy = status.adequacyPercent
+    if adequacy >= 80 {
+        return .green
+    } else if adequacy >= 60 {
+        return .yellow
+    } else {
+        return .red
+    }
 }

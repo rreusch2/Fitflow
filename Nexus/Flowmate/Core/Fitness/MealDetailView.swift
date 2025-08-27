@@ -210,25 +210,17 @@ struct MealDetailView: View {
     
     private var foodsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Foods (\(meal.foods?.count ?? 0))")
+            Text("Ingredients (\(meal.ingredients.count))")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(themeProvider.theme.textPrimary)
                 .padding(.horizontal, 20)
             
-            if let foods = meal.foods, !foods.isEmpty {
-                VStack(spacing: 12) {
-                    ForEach(foods, id: \.id) { food in
-                        FoodItemCard(food: food)
-                    }
+            VStack(spacing: 12) {
+                ForEach(meal.ingredients, id: \.id) { ingredient in
+                    IngredientItemCard(ingredient: ingredient)
                 }
-                .padding(.horizontal, 20)
-            } else {
-                Text("No individual food items recorded")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(themeProvider.theme.textSecondary)
-                    .italic()
-                    .padding(.horizontal, 20)
             }
+            .padding(.horizontal, 20)
         }
     }
     
@@ -258,13 +250,11 @@ struct MealDetailView: View {
                     value: "\(meal.calories) cal"
                 )
                 
-                if meal.foods?.count ?? 0 > 0 {
-                    InfoRow(
-                        icon: "list.bullet",
-                        title: "Food Items",
-                        value: "\(meal.foods?.count ?? 0) items"
-                    )
-                }
+                InfoRow(
+                    icon: "list.bullet",
+                    title: "Ingredients",
+                    value: "\(meal.ingredients.count) items"
+                )
             }
             .padding(.horizontal, 20)
         }
@@ -368,29 +358,29 @@ struct MacroLegendItem: View {
     }
 }
 
-struct FoodItemCard: View {
-    let food: FoodItem
+struct IngredientItemCard: View {
+    let ingredient: Ingredient
     @EnvironmentObject var themeProvider: ThemeProvider
     
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(food.name)
+                Text(ingredient.name)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(themeProvider.theme.textPrimary)
                 
-                Text("\(food.quantity, specifier: "%.0f")g")
+                Text("\(Int(ingredient.amount)) \(ingredient.unit)")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(themeProvider.theme.textSecondary)
                 
                 HStack(spacing: 12) {
-                    Text("P: \(Int(food.totalProtein))g")
+                    Text("P: \(ingredient.macros.protein)g")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.red)
-                    Text("C: \(Int(food.totalCarbs))g")
+                    Text("C: \(ingredient.macros.carbs)g")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.orange)
-                    Text("F: \(Int(food.totalFat))g")
+                    Text("F: \(ingredient.macros.fat)g")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.green)
                 }
@@ -398,7 +388,7 @@ struct FoodItemCard: View {
             
             Spacer()
             
-            Text("\(Int(food.totalCalories)) cal")
+            Text("\(ingredient.calories) cal")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(themeProvider.theme.accent)
         }
@@ -472,7 +462,7 @@ struct EditMealView: View {
         name: "Grilled Chicken Salad",
         description: "Mixed greens with grilled chicken breast",
         calories: 450,
-        macros: MacroBreakdown(protein: 35, carbs: 15, fat: 28, fiber: 8, sugar: 5, sodium: 400),
+        macros: MacroBreakdown(protein: 35, carbs: 15, fat: 28, fiber: 8),
         ingredients: [],
         instructions: [],
         prepTime: 15,

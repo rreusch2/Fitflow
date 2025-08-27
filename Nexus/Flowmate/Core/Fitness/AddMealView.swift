@@ -269,11 +269,7 @@ struct AddMealView: View {
         guard !searchText.isEmpty else { return }
         
         isSearching = true
-        do {
-            searchResults = try await nutritionService.searchFoodItems(query: searchText)
-        } catch {
-            print("Error searching foods: \(error)")
-        }
+        searchResults = await nutritionService.searchFoodItems(query: searchText)
         isSearching = false
     }
     
@@ -288,23 +284,14 @@ struct AddMealView: View {
     }
     
     private func saveMeal() async {
-        let meal = Meal(
-            id: UUID(),
-            name: mealName.isEmpty ? selectedMealType.displayName : mealName,
-            type: selectedMealType,
-            calories: Int(totalCalories),
-            macros: Macros(
-                protein: totalProtein,
-                carbs: totalCarbs,
-                fat: totalFat
-            ),
-            foods: selectedFoods,
-            timestamp: Date(),
-            description: selectedFoods.map { $0.name }.joined(separator: ", ")
-        )
-        
+        let items: [Ingredient] = selectedFoods.map { $0.toIngredient() }
         do {
-            try await nutritionService.logMeal(meal)
+            _ = try await nutritionService.logMeal(
+                mealType: selectedMealType,
+                items: items,
+                source: "manual",
+                notes: mealName.isEmpty ? nil : mealName
+            )
             dismiss()
         } catch {
             print("Error saving meal: \(error)")
@@ -373,7 +360,7 @@ struct SelectedFoodCard: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(themeProvider.theme.textPrimary)
                 
-                Text("\(food.quantity, specifier: "%.0f")g • \(Int(food.totalCalories)) cal")
+                Text("\(String(format: "%.0f", food.quantity))g • \(Int(food.totalCalories)) cal")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(themeProvider.theme.textSecondary)
                 

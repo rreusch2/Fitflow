@@ -234,7 +234,7 @@ struct InsightCard: View {
     }
 }
 
-enum InsightType {
+enum InsightType: String, Codable {
     case positive
     case suggestion
     case tip

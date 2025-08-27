@@ -25,7 +25,7 @@ final class NutritionAIService: ObservableObject {
     // MARK: - Daily Meal Suggestions
     
     func getDailySuggestions(date: Date, goals: NutritionService.NutritionGoals?) async throws -> [Meal] {
-        guard let user = database.user else { throw NutritionAIError.userNotAuthenticated }
+        guard let user = AuthenticationService.shared.currentUser else { throw NutritionAIError.userNotAuthenticated }
         
         // Check cache first
         let cacheKey = "daily_suggestions_\(user.id)_\(dateString(from: date))"
@@ -45,7 +45,7 @@ final class NutritionAIService: ObservableObject {
                 )
             )
             
-            let suggestions = try JSONDecoder().decode(DailySuggestionsResponse.self, from: response)
+            let suggestions = try makeJSONDecoder().decode(DailySuggestionsResponse.self, from: response)
             let meals = suggestions.suggestions.compactMap { $0.toMeal() }
             
             // Cache for 6 hours
@@ -62,7 +62,7 @@ final class NutritionAIService: ObservableObject {
     // MARK: - Weekly Meal Plan Generation
     
     func generateWeeklyMealPlan(preferences: MealPlanPreferences) async throws -> WeeklyMealPlan {
-        guard let user = database.user else { throw NutritionAIError.userNotAuthenticated }
+        guard let user = AuthenticationService.shared.currentUser else { throw NutritionAIError.userNotAuthenticated }
         
         isLoading = true
         defer { isLoading = false }
@@ -76,10 +76,37 @@ final class NutritionAIService: ObservableObject {
                 )
             )
             
-            let mealPlan = try JSONDecoder().decode(WeeklyMealPlanResponse.self, from: response)
+            let mealPlan = try makeJSONDecoder().decode(WeeklyMealPlanResponse.self, from: response)
             lastRequestTime = Date()
             
-            return mealPlan.toWeeklyMealPlan()
+            return NutritionAIService.WeeklyMealPlan(
+                id: UUID(),
+                startDate: mealPlan.startDate,
+                days: mealPlan.days.map { day in
+                    NutritionAIService.WeeklyMealPlan.DayPlan(
+                        id: UUID(),
+                        date: day.date,
+                        meals: day.meals,
+                        dayTotals: NutritionAIService.WeeklyMealPlan.DayTotals(
+                            calories: day.dayTotals.calories,
+                            protein: day.dayTotals.protein,
+                            carbs: day.dayTotals.carbs,
+                            fat: day.dayTotals.fat,
+                            fiber: day.dayTotals.fiber
+                        )
+                    )
+                },
+                shoppingList: mealPlan.shoppingList.map { item in
+                    NutritionAIService.WeeklyMealPlan.ShoppingItem(
+                        name: item.name,
+                        quantity: item.quantity,
+                        category: item.category,
+                        estimatedCost: item.estimatedCost
+                    )
+                },
+                prepNotes: mealPlan.prepNotes,
+                totalCost: mealPlan.totalCost
+            )
             
         } catch {
             throw NutritionAIError.apiError(error.localizedDescription)
@@ -89,7 +116,7 @@ final class NutritionAIService: ObservableObject {
     // MARK: - Diet Analysis
     
     func analyzeDiet(days: Int = 7) async throws -> DietAnalysis {
-        guard let user = database.user else { throw NutritionAIError.userNotAuthenticated }
+        guard let user = AuthenticationService.shared.currentUser else { throw NutritionAIError.userNotAuthenticated }
         
         isLoading = true
         defer { isLoading = false }
@@ -97,16 +124,93 @@ final class NutritionAIService: ObservableObject {
         do {
             let response = try await callBackendAPI(
                 endpoint: "/ai/analyze-diet",
-                body: DietAnalysisRequest(
-                    userId: user.id,
-                    days: days
-                )
+                body: DietAnalysisRequest(days: days)
             )
             
-            let analysis = try JSONDecoder().decode(DietAnalysisResponse.self, from: response)
+            let analysis = try makeJSONDecoder().decode(DietAnalysisResponse.self, from: response)
             lastRequestTime = Date()
             
-            return analysis.toDietAnalysis()
+            return NutritionAIService.DietAnalysis(
+                id: UUID(),
+                daysAnalyzed: days,
+                overallScore: analysis.overallScore ?? 75.0,
+                periodDescription: analysis.period,
+                keyTrends: analysis.trends.map { trend in
+                    NutritionAIService.DietAnalysis.Trend(
+                        id: UUID(),
+                        title: trend.title,
+                        description: trend.description,
+                        emoji: trend.emoji,
+                        isPositive: trend.isPositive,
+                        percentage: trend.percentage ?? 0.0
+                    )
+                },
+                habitInsights: analysis.habitInsights.map { habit in
+                    NutritionAIService.DietAnalysis.HabitInsight(
+                        id: UUID(),
+                        habit: habit.habit,
+                        insight: habit.insight,
+                        emoji: habit.emoji
+                    )
+                },
+                macroBreakdown: NutritionAIService.DietAnalysis.MacroBreakdown(
+                    proteinPercent: analysis.macroTrends.proteinPercent,
+                    carbsPercent: analysis.macroTrends.carbsPercent,
+                    fatPercent: analysis.macroTrends.fatPercent,
+                    avgProtein: analysis.macroTrends.avgProtein,
+                    avgCarbs: analysis.macroTrends.avgCarbs,
+                    avgFat: analysis.macroTrends.avgFat
+                ),
+                micronutrientStatus: analysis.micronutrientStatus.map { status in
+                    NutritionAIService.DietAnalysis.NutrientStatus(
+                        nutrient: status.nutrient,
+                        adequacyPercent: status.adequacyPercent,
+                        statusText: status.statusText,
+                        recommendation: status.recommendation
+                    )
+                },
+                avgDailyWater: analysis.avgDailyWater,
+                hydrationStatus: NutritionAIService.DietAnalysis.HydrationStatus(
+                    description: analysis.hydrationStatus.description,
+                    emoji: analysis.hydrationStatus.emoji,
+                    color: analysis.hydrationStatus.color
+                ),
+                recommendations: NutritionAIService.DietAnalysis.Recommendations(
+                    priority: analysis.recommendations.priority.map { rec in
+                        NutritionAIService.DietAnalysis.Recommendation(
+                            id: UUID(),
+                            title: rec.action,
+                            description: rec.reason,
+                            priority: rec.priority,
+                            category: "general",
+                            actionable: true,
+                            estimatedImpact: rec.expectedBenefit
+                        )
+                    },
+                    mealTiming: analysis.recommendations.mealTiming?.map { rec in
+                        NutritionAIService.DietAnalysis.Recommendation(
+                            id: UUID(),
+                            title: rec.action,
+                            description: rec.reason,
+                            priority: rec.priority,
+                            category: "timing",
+                            actionable: true,
+                            estimatedImpact: rec.expectedBenefit
+                        )
+                    } ?? [],
+                    supplements: analysis.recommendations.supplements?.map { rec in
+                        NutritionAIService.DietAnalysis.Recommendation(
+                            id: UUID(),
+                            title: rec.action,
+                            description: rec.reason,
+                            priority: rec.priority,
+                            category: "supplements",
+                            actionable: true,
+                            estimatedImpact: rec.expectedBenefit
+                        )
+                    } ?? []
+                )
+            )
             
         } catch {
             throw NutritionAIError.apiError(error.localizedDescription)
@@ -115,12 +219,12 @@ final class NutritionAIService: ObservableObject {
     
     // MARK: - Personalized Tips
     
-    func getPersonalizedTips() async throws -> [NutritionTip] {
-        guard let user = database.user else { throw NutritionAIError.userNotAuthenticated }
+    func getPersonalizedTips() async throws -> [NutritionAIService.NutritionTip] {
+        guard let user = AuthenticationService.shared.currentUser else { throw NutritionAIError.userNotAuthenticated }
         
         // Check cache first (refresh every 4 hours)
         let cacheKey = "nutrition_tips_\(user.id)"
-        if let cached: [NutritionTip] = cache.get(key: cacheKey) {
+        if let cached: [NutritionAIService.NutritionTip] = cache.get(key: cacheKey) {
             return cached
         }
         
@@ -130,7 +234,7 @@ final class NutritionAIService: ObservableObject {
         do {
             let response = try await callBackendAPI(
                 endpoint: "/ai/nutrition-tips",
-                body: PersonalizedTipsRequest(userId: user.id)
+                body: EmptyBody()
             )
             
             let tipsResponse = try JSONDecoder().decode(PersonalizedTipsResponse.self, from: response)
@@ -150,7 +254,7 @@ final class NutritionAIService: ObservableObject {
     // MARK: - Backend API Communication
     
     private func callBackendAPI<T: Codable>(endpoint: String, body: T) async throws -> Data {
-        guard let url = URL(string: "\(Config.API.baseURL)\(endpoint)") else {
+        guard let url = URL(string: "\(Config.Environment.current.baseURL)\(endpoint)") else {
             throw NutritionAIError.invalidURL
         }
         
@@ -159,7 +263,7 @@ final class NutritionAIService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         // Add authentication
-        if let token = await database.getAuthToken() {
+        if let token = getAuthToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -179,6 +283,17 @@ final class NutritionAIService: ObservableObject {
         return data
     }
     
+    private func getAuthToken() -> String? {
+        // Use the same key as AuthenticationService
+        return UserDefaults.standard.string(forKey: "auth_access_token")
+    }
+    
+    private func makeJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+    
     private func dateString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -188,7 +303,7 @@ final class NutritionAIService: ObservableObject {
 
 // MARK: - Data Models
 
-struct MealPlanPreferences {
+struct MealPlanPreferences: Codable {
     let targetCalories: Int?
     let dietType: String?
     let allergies: [String]
@@ -255,19 +370,30 @@ struct DietAnalysis {
 extension NutritionAIService {
     struct NutritionTip: Codable, Identifiable {
         let id: UUID
-        let type: String
+        let type: InsightType
         let title: String
         let description: String
         let icon: String
         let priority: String
         let actionable: Bool
         
-        init(id: UUID = UUID(), type: String, title: String, description: String, icon: String, priority: String, actionable: Bool) {
+        init(id: UUID = UUID(), type: InsightType, title: String, description: String, icon: String = "lightbulb", priority: String, actionable: Bool) {
             self.id = id
             self.type = type
             self.title = title
             self.description = description
             self.icon = icon
+            self.priority = priority
+            self.actionable = actionable
+        }
+        
+        // Additional convenience initializer
+        init(type: InsightType, title: String, description: String, priority: String, actionable: Bool) {
+            self.id = UUID()
+            self.type = type
+            self.title = title
+            self.description = description
+            self.icon = "lightbulb"
             self.priority = priority
             self.actionable = actionable
         }
@@ -300,6 +426,7 @@ extension NutritionAIService {
             let protein: Double
             let carbs: Double
             let fat: Double
+            let fiber: Double
         }
         
         struct ShoppingItem: Codable, Identifiable {
@@ -338,7 +465,7 @@ extension NutritionAIService {
         let keyTrends: [Trend]
         let habitInsights: [HabitInsight]
         let macroBreakdown: MacroBreakdown
-        let micronutrientStatus: [MicronutrientStatus]
+        let micronutrientStatus: [NutrientStatus]
         let avgDailyWater: Double
         let hydrationStatus: HydrationStatus
         let recommendations: Recommendations
@@ -349,13 +476,15 @@ extension NutritionAIService {
             let description: String
             let emoji: String
             let isPositive: Bool
+            let percentage: Double
             
-            init(id: UUID = UUID(), title: String, description: String, emoji: String, isPositive: Bool) {
+            init(id: UUID = UUID(), title: String, description: String, emoji: String, isPositive: Bool, percentage: Double = 0.0) {
                 self.id = id
                 self.title = title
                 self.description = description
                 self.emoji = emoji
                 self.isPositive = isPositive
+                self.percentage = percentage
             }
         }
         
@@ -382,11 +511,11 @@ extension NutritionAIService {
             let avgFat: Double
         }
         
-        struct MicronutrientStatus: Codable {
+        struct NutrientStatus: Codable {
             let nutrient: String
             let adequacyPercent: Double
             let statusText: String
-            let statusColor: String
+            let recommendation: String
         }
         
         struct HydrationStatus: Codable {
@@ -405,17 +534,23 @@ extension NutritionAIService {
             let id: UUID
             let title: String
             let description: String
+            let priority: String
             let category: String
+            let actionable: Bool
+            let estimatedImpact: String
             
-            init(id: UUID = UUID(), title: String, description: String, category: String) {
+            init(id: UUID = UUID(), title: String, description: String, priority: String, category: String, actionable: Bool, estimatedImpact: String) {
                 self.id = id
                 self.title = title
                 self.description = description
+                self.priority = priority
                 self.category = category
+                self.actionable = actionable
+                self.estimatedImpact = estimatedImpact
             }
         }
         
-        init(id: UUID = UUID(), daysAnalyzed: Int, overallScore: Double, periodDescription: String, keyTrends: [Trend], habitInsights: [HabitInsight], macroBreakdown: MacroBreakdown, micronutrientStatus: [MicronutrientStatus], avgDailyWater: Double, hydrationStatus: HydrationStatus, recommendations: Recommendations) {
+        init(id: UUID = UUID(), daysAnalyzed: Int, overallScore: Double, periodDescription: String, keyTrends: [Trend], habitInsights: [HabitInsight], macroBreakdown: MacroBreakdown, micronutrientStatus: [NutrientStatus], avgDailyWater: Double, hydrationStatus: HydrationStatus, recommendations: Recommendations) {
             self.id = id
             self.daysAnalyzed = daysAnalyzed
             self.overallScore = overallScore
@@ -435,9 +570,9 @@ extension NutritionAIService {
 
 struct DailySuggestionsRequest: Codable {
     let date: String
-    let goals: NutritionGoals?
+    let goals: NutritionService.NutritionGoals?
     
-    init(date: Date, goals: NutritionGoals?) {
+    init(date: Date, goals: NutritionService.NutritionGoals?) {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         self.date = formatter.string(from: date)
@@ -485,16 +620,14 @@ struct DailySuggestionsResponse: Codable {
 }
 
 struct WeeklyMealPlanRequest: Codable {
+    let preferences: MealPlanPreferences
     let startDate: String
-    let targetCalories: Int
-    let dietaryRestrictions: [String]
     
-    init(startDate: Date, targetCalories: Int = 2000, dietaryRestrictions: [String] = []) {
+    init(preferences: MealPlanPreferences, startDate: Date) {
+        self.preferences = preferences
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         self.startDate = formatter.string(from: startDate)
-        self.targetCalories = targetCalories
-        self.dietaryRestrictions = dietaryRestrictions
     }
 }
 
@@ -508,8 +641,16 @@ struct WeeklyMealPlanResponse: Codable {
     
     struct DayPlan: Codable {
         let date: Date
-        let meals: [DailySuggestionsResponse.MealSuggestion]
-        let dayTotals: MacroBreakdown
+        let meals: [Meal]
+        let dayTotals: DayTotals
+        
+        struct DayTotals: Codable {
+            let calories: Double
+            let protein: Double
+            let carbs: Double
+            let fat: Double
+            let fiber: Double
+        }
     }
     
     struct ShoppingItem: Codable {
@@ -519,58 +660,64 @@ struct WeeklyMealPlanResponse: Codable {
         let estimatedCost: Double?
     }
     
-    func toWeeklyMealPlan() -> WeeklyMealPlan {
-        return WeeklyMealPlan(
-            id: id,
-            startDate: startDate,
-            days: days.compactMap { day in
-                guard let meals = day.meals.compactMap({ $0.toMeal() }) as [Meal]? else { return nil }
-                return WeeklyMealPlan.DayMealPlan(
-                    date: day.date,
-                    meals: meals,
-                    dayTotals: day.dayTotals
-                )
-            },
-            shoppingList: shoppingList.map {
-                WeeklyMealPlan.ShoppingItem(
-                    name: $0.name,
-                    quantity: $0.quantity,
-                    category: $0.category,
-                    estimatedCost: $0.estimatedCost
-                )
-            },
-            prepNotes: prepNotes,
-            totalCost: totalCost
-        )
-    }
 }
 
 struct DietAnalysisRequest: Codable {
-    let userId: UUID
     let days: Int
 }
 
 struct DietAnalysisResponse: Codable {
     let period: String
     let overview: String
+    let overallScore: Double?
+    let trends: [TrendResponse]
+    let habitInsights: [HabitInsightResponse]
     let macroTrends: MacroTrendsResponse
-    let insights: [InsightResponse]
-    let recommendations: [RecommendationResponse]
-    let score: Int
+    let micronutrientStatus: [NutrientStatusResponse]
+    let avgDailyWater: Double
+    let hydrationStatus: HydrationStatusResponse
+    let recommendations: RecommendationsResponse
     
-    struct MacroTrendsResponse: Codable {
-        let averageCalories: Double
-        let proteinTrend: String
-        let carbsTrend: String
-        let fatTrend: String
-        let fiberAverage: Double
-    }
-    
-    struct InsightResponse: Codable {
-        let type: String
+    struct TrendResponse: Codable {
         let title: String
         let description: String
-        let impact: String
+        let emoji: String
+        let isPositive: Bool
+        let percentage: Double?
+    }
+    
+    struct HabitInsightResponse: Codable {
+        let habit: String
+        let insight: String
+        let emoji: String
+    }
+    
+    struct MacroTrendsResponse: Codable {
+        let proteinPercent: Double
+        let carbsPercent: Double
+        let fatPercent: Double
+        let avgProtein: Double
+        let avgCarbs: Double
+        let avgFat: Double
+    }
+    
+    struct NutrientStatusResponse: Codable {
+        let nutrient: String
+        let adequacyPercent: Double
+        let statusText: String
+        let recommendation: String
+    }
+    
+    struct HydrationStatusResponse: Codable {
+        let description: String
+        let emoji: String
+        let color: String
+    }
+    
+    struct RecommendationsResponse: Codable {
+        let priority: [RecommendationResponse]
+        let mealTiming: [RecommendationResponse]?
+        let supplements: [RecommendationResponse]?
     }
     
     struct RecommendationResponse: Codable {
@@ -580,41 +727,9 @@ struct DietAnalysisResponse: Codable {
         let expectedBenefit: String
     }
     
-    func toDietAnalysis() -> DietAnalysis {
-        return DietAnalysis(
-            period: period,
-            overview: overview,
-            macroTrends: DietAnalysis.MacroTrends(
-                averageCalories: macroTrends.averageCalories,
-                proteinTrend: macroTrends.proteinTrend,
-                carbsTrend: macroTrends.carbsTrend,
-                fatTrend: macroTrends.fatTrend,
-                fiberAverage: macroTrends.fiberAverage
-            ),
-            insights: insights.map {
-                DietAnalysis.DietInsight(
-                    type: InsightType(rawValue: $0.type) ?? .tip,
-                    title: $0.title,
-                    description: $0.description,
-                    impact: $0.impact
-                )
-            },
-            recommendations: recommendations.map {
-                DietAnalysis.DietRecommendation(
-                    priority: $0.priority,
-                    action: $0.action,
-                    reason: $0.reason,
-                    expectedBenefit: $0.expectedBenefit
-                )
-            },
-            score: score
-        )
-    }
 }
 
-struct PersonalizedTipsRequest: Codable {
-    let userId: UUID
-}
+struct EmptyBody: Codable {}
 
 struct PersonalizedTipsResponse: Codable {
     let tips: [TipResponse]
@@ -628,8 +743,8 @@ struct PersonalizedTipsResponse: Codable {
         let priority: String
         let actionable: Bool
         
-        func toNutritionTip() -> NutritionTip {
-            return NutritionTip(
+        func toNutritionTip() -> NutritionAIService.NutritionTip {
+            return NutritionAIService.NutritionTip(
                 id: id,
                 type: InsightType(rawValue: type) ?? .tip,
                 title: title,

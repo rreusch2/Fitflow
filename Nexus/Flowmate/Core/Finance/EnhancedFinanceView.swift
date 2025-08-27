@@ -204,7 +204,7 @@ struct EnhancedFinanceView: View {
             GridItem(.flexible())
         ], spacing: 16) {
             if let p = portfolio {
-                StatCard(
+                FinanceStatCard(
                     title: "Portfolio Value",
                     value: p.formattedTotalValue,
                     subtitle: "Total Holdings",
@@ -212,7 +212,7 @@ struct EnhancedFinanceView: View {
                     color: .green
                 )
                 
-                StatCard(
+                FinanceStatCard(
                     title: "Daily P&L",
                     value: p.formattedDailyChange,
                     subtitle: p.formattedDailyChangePercent,
@@ -220,7 +220,7 @@ struct EnhancedFinanceView: View {
                     color: p.isPositive ? .green : .red
                 )
                 
-                StatCard(
+                FinanceStatCard(
                     title: "Risk Score",
                     value: "\(Int(p.riskScore))/100",
                     subtitle: "Portfolio Risk",
@@ -228,7 +228,7 @@ struct EnhancedFinanceView: View {
                     color: .orange
                 )
                 
-                StatCard(
+                FinanceStatCard(
                     title: "Diversification",
                     value: "\(Int(p.diversificationScore))/100",
                     subtitle: "Sector Spread",

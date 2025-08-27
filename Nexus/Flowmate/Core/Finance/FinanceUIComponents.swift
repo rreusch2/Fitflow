@@ -76,7 +76,7 @@ struct InvestmentIdeaCard: View {
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     if let targetPrice = analysis.targetPrice {
-                        Text("$\(targetPrice, specifier: "%.2f")")
+                        Text("$" + String(format: "%.2f", targetPrice))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(themeProvider.theme.textPrimary)
                         
@@ -234,7 +234,7 @@ struct StockAnalysisDetailView: View {
                                 }
                                 
                                 if let targetPrice = analysis.targetPrice {
-                                    Text("Target: $\(targetPrice, specifier: "%.2f")")
+                                    Text("Target: $" + String(format: "%.2f", targetPrice))
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(themeProvider.theme.accent)
                                 }

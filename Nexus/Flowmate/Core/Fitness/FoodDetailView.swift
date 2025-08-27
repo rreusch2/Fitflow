@@ -12,10 +12,12 @@ struct FoodDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var food: FoodItem
+    @State private var quantity: Double
     let onSave: (FoodItem) -> Void
     
     init(food: FoodItem, onSave: @escaping (FoodItem) -> Void) {
         self._food = State(initialValue: food)
+        self._quantity = State(initialValue: food.servingSize)
         self.onSave = onSave
     }
     
@@ -50,7 +52,9 @@ struct FoodDetailView: View {
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        onSave(food)
+                        // Persist adjusted quantity into the FoodItem copy
+                        let updated = food.withServingSize(quantity)
+                        onSave(updated)
                         dismiss()
                     }
                     .foregroundColor(themeProvider.theme.accent)
@@ -72,7 +76,7 @@ struct FoodDetailView: View {
                     .foregroundColor(themeProvider.theme.textSecondary)
             }
             
-            Text("\(Int(food.totalCalories)) calories")
+            Text("\(Int(totalCalories)) calories")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(themeProvider.theme.accent)
         }
@@ -87,52 +91,52 @@ struct FoodDetailView: View {
             
             HStack(spacing: 20) {
                 Button {
-                    if food.quantity > 10 {
-                        food.quantity -= 10
+                    if quantity > 10 {
+                        quantity -= 10
                     }
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 32))
                         .foregroundColor(themeProvider.theme.accent)
                 }
-                .disabled(food.quantity <= 10)
+                .disabled(quantity <= 10)
                 
                 VStack(spacing: 8) {
-                    Text("\(food.quantity, specifier: "%.0f")g")
+                    Text(String(format: "%.0f", quantity) + "g")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(themeProvider.theme.textPrimary)
                     
-                    Slider(value: $food.quantity, in: 5...500, step: 5)
+                    Slider(value: $quantity, in: 5...500, step: 5)
                         .accentColor(themeProvider.theme.accent)
                         .frame(width: 120)
                 }
                 
                 Button {
-                    if food.quantity < 500 {
-                        food.quantity += 10
+                    if quantity < 500 {
+                        quantity += 10
                     }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 32))
                         .foregroundColor(themeProvider.theme.accent)
                 }
-                .disabled(food.quantity >= 500)
+                .disabled(quantity >= 500)
             }
             
             // Quick quantity buttons
             HStack(spacing: 12) {
                 ForEach([50, 100, 150, 200], id: \.self) { quantity in
                     Button {
-                        food.quantity = Double(quantity)
+                        self.quantity = Double(quantity)
                     } label: {
                         Text("\(quantity)g")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(food.quantity == Double(quantity) ? .white : themeProvider.theme.accent)
+                            .foregroundColor(self.quantity == Double(quantity) ? .white : themeProvider.theme.accent)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(food.quantity == Double(quantity) ? themeProvider.theme.accent : themeProvider.theme.accent.opacity(0.1))
+                                    .fill(self.quantity == Double(quantity) ? themeProvider.theme.accent : themeProvider.theme.accent.opacity(0.1))
                                     .stroke(themeProvider.theme.accent, lineWidth: 1)
                             )
                     }
@@ -152,47 +156,38 @@ struct FoodDetailView: View {
             VStack(spacing: 12) {
                 NutritionFactRow(
                     label: "Calories",
-                    value: "\(Int(food.totalCalories))",
+                    value: "\(Int(totalCalories))",
                     unit: "cal",
                     color: .blue
                 )
                 
                 NutritionFactRow(
                     label: "Protein",
-                    value: "\(food.totalProtein, specifier: "%.1f")",
+                    value: String(format: "%.1f", totalProtein),
                     unit: "g",
                     color: .red
                 )
                 
                 NutritionFactRow(
                     label: "Carbohydrates",
-                    value: "\(food.totalCarbs, specifier: "%.1f")",
+                    value: String(format: "%.1f", totalCarbs),
                     unit: "g",
                     color: .orange
                 )
                 
                 NutritionFactRow(
                     label: "Fat",
-                    value: "\(food.totalFat, specifier: "%.1f")",
+                    value: String(format: "%.1f", totalFat),
                     unit: "g",
                     color: .green
                 )
                 
-                if food.fiberPer100g > 0 {
+                if fiberPer100g > 0 {
                     NutritionFactRow(
                         label: "Fiber",
-                        value: "\((food.fiberPer100g * food.quantity / 100), specifier: "%.1f")",
+                        value: String(format: "%.1f", (fiberPer100g * quantity / 100)),
                         unit: "g",
                         color: .brown
-                    )
-                }
-                
-                if food.sugarPer100g > 0 {
-                    NutritionFactRow(
-                        label: "Sugar",
-                        value: "\((food.sugarPer100g * food.quantity / 100), specifier: "%.1f")",
-                        unit: "g",
-                        color: .pink
                     )
                 }
             }
@@ -208,10 +203,10 @@ struct FoodDetailView: View {
                 .padding(.horizontal, 20)
             
             VStack(spacing: 8) {
-                ReferenceRow(label: "Calories", value: "\(Int(food.caloriesPer100g)) cal")
-                ReferenceRow(label: "Protein", value: "\(food.proteinPer100g, specifier: "%.1f")g")
-                ReferenceRow(label: "Carbs", value: "\(food.carbsPer100g, specifier: "%.1f")g")
-                ReferenceRow(label: "Fat", value: "\(food.fatPer100g, specifier: "%.1f")g")
+                ReferenceRow(label: "Calories", value: "\(food.calories) cal")
+                ReferenceRow(label: "Protein", value: String(format: "%.1f", Double(food.macros.protein)) + "g")
+                ReferenceRow(label: "Carbs", value: String(format: "%.1f", Double(food.macros.carbs)) + "g")
+                ReferenceRow(label: "Fat", value: String(format: "%.1f", Double(food.macros.fat)) + "g")
             }
             .padding(16)
             .background(
@@ -222,6 +217,23 @@ struct FoodDetailView: View {
             .padding(.horizontal, 20)
         }
     }
+}
+
+// MARK: - Computed Totals
+extension FoodDetailView {
+    private var totalCalories: Double {
+        Double(food.calories) * quantity / 100.0
+    }
+    private var totalProtein: Double {
+        Double(food.macros.protein) * quantity / 100.0
+    }
+    private var totalCarbs: Double {
+        Double(food.macros.carbs) * quantity / 100.0
+    }
+    private var totalFat: Double {
+        Double(food.macros.fat) * quantity / 100.0
+    }
+    private var fiberPer100g: Double { Double(food.macros.fiber) }
 }
 
 struct NutritionFactRow: View {
@@ -276,6 +288,8 @@ struct ReferenceRow: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(themeProvider.theme.textPrimary)
         }
+    }
+}
 
 #Preview {
     FoodDetailView(
@@ -284,7 +298,7 @@ struct ReferenceRow: View {
             name: "Chicken Breast",
             brand: "Organic Valley",
             calories: 165,
-            macros: MacroBreakdown(protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 70),
+            macros: MacroBreakdown(protein: 31, carbs: 0, fat: 4, fiber: 0),
             micronutrients: nil,
             servingSize: 100.0,
             servingSizeUnit: "g",

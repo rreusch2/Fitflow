@@ -79,6 +79,9 @@ struct NutritionInsightsView: View {
         }
     }
     
+    // Proxy for older call sites expecting `headerSection`
+    private var headerSection: some View { nutritionHeader }
+    
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Quick Actions")
@@ -248,7 +251,7 @@ struct NutritionInsightsView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(personalizedTips, id: \.id) { tip in
-                        NutritionTip(
+                        NutritionTipView(
                             tip: tip.description,
                             type: tip.type,
                             icon: tip.icon
@@ -395,7 +398,7 @@ struct NutritionInsightsView: View {
             return
         }
         
-        let preferences = NutritionAIService.MealPlanPreferences(
+        let preferences = MealPlanPreferences(
             targetCalories: goals.targetCalories,
             dietType: goals.dietPreferences?.dietType,
             allergies: goals.dietPreferences?.allergies ?? [],
@@ -620,7 +623,7 @@ struct MacroItem: View {
     }
 }
 
-struct NutritionTip: View {
+struct NutritionTipView: View {
     let tip: String
     let type: InsightType
     let icon: String

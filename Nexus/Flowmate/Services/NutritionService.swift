@@ -19,19 +19,40 @@ final class NutritionService: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private let database = DatabaseService.shared
+    private let auth = AuthenticationService.shared
     
     private init() {
         setupObservers()
     }
+
+// DTOs to ensure Codable conformance for nested types
+struct MealLogItemDTO: Codable {
+    let foodId: UUID?
+    let name: String
+    let amount: Double
+    let unit: String
+    let calories: Int
+    let macros: MacroBreakdown
+    
+    enum CodingKeys: String, CodingKey {
+        case foodId = "food_id", name, amount, unit, calories, macros
+    }
+}
+
+struct NutritionTotalsDTO: Codable {
+    let calories: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let fiber: Double
+}
     
     private func setupObservers() {
         // Listen for authentication changes
-        database.$user
+        auth.$currentUser
             .compactMap { $0 }
             .sink { [weak self] _ in
-                Task {
-                    await self?.loadUserData()
-                }
+                Task { await self?.loadUserData() }
             }
             .store(in: &cancellables)
     }
@@ -104,7 +125,7 @@ final class NutritionService: ObservableObject {
     // MARK: - Public Methods
     
     func loadUserData() async {
-        guard let user = database.user else { return }
+        guard auth.currentUser != nil else { return }
         
         isLoading = true
         defer { isLoading = false }
@@ -123,38 +144,32 @@ final class NutritionService: ObservableObject {
     }
     
     func fetchGoals() async -> NutritionGoals? {
-        guard let user = database.user else { return nil }
-        
+        guard let user = auth.currentUser else { return nil }
         do {
-            let response = try await database.supabase
-                .from("nutrition_goals")
-                .select("*")
-                .eq("user_id", value: user.id.uuidString)
-                .single()
-                .execute()
-            
-            let data = response.data
-            return try JSONDecoder().decode(NutritionGoalsResponse.self, from: data).toNutritionGoals()
-            
+            let data = try await database.restSelect(
+                path: "nutrition_goals",
+                query: [
+                    URLQueryItem(name: "select", value: "*"),
+                    URLQueryItem(name: "user_id", value: "eq.\(user.id.uuidString)"),
+                    URLQueryItem(name: "limit", value: "1")
+                ]
+            )
+            let rows = try JSONDecoder().decode([NutritionGoalsResponse].self, from: data)
+            if let row = rows.first { return row.toNutritionGoals() }
+            return createDefaultGoals(for: user)
         } catch {
-            // Return default goals if none exist
             return createDefaultGoals(for: user)
         }
     }
     
     func updateGoals(_ goals: NutritionGoals) async throws {
-        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
-        
+        guard let user = auth.currentUser else { throw NutritionError.userNotAuthenticated }
         isLoading = true
         defer { isLoading = false }
-        
         let goalsData = NutritionGoalsRequest(from: goals, userId: user.id)
-        
-        try await database.supabase
-            .from("nutrition_goals")
-            .upsert(goalsData)
-            .execute()
-        
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode([goalsData])
+        _ = try await database.restUpsert(path: "nutrition_goals", body: body)
         self.goals = goals
     }
     
@@ -163,20 +178,18 @@ final class NutritionService: ObservableObject {
     }
     
     func getSummary(start: Date, end: Date) async -> NutritionSummary? {
-        guard let user = database.user else { return nil }
-        
+        guard let user = auth.currentUser else { return nil }
         do {
-            let response = try await database.supabase
-                .rpc("get_nutrition_summary", params: [
+            let iso = ISO8601DateFormatter()
+            let data = try await database.callRPC(
+                "get_nutrition_summary",
+                payload: [
                     "user_id": user.id.uuidString,
-                    "start_date": ISO8601DateFormatter().string(from: start),
-                    "end_date": ISO8601DateFormatter().string(from: end)
-                ])
-                .execute()
-            
-            let data = response.data
+                    "start_date": iso.string(from: start),
+                    "end_date": iso.string(from: end)
+                ]
+            )
             return try JSONDecoder().decode(NutritionSummaryResponse.self, from: data).toNutritionSummary()
-            
         } catch {
             print("Error fetching nutrition summary: \(error)")
             return nil
@@ -184,7 +197,7 @@ final class NutritionService: ObservableObject {
     }
     
     func logMeal(mealType: MealType, items: [Ingredient], source: String = "manual", notes: String? = nil) async throws -> Bool {
-        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
+        guard let user = auth.currentUser else { throw NutritionError.userNotAuthenticated }
         
         isLoading = true
         defer { isLoading = false }
@@ -194,7 +207,7 @@ final class NutritionService: ObservableObject {
         
         // Convert ingredients to meal log items
         let logItems = items.map { ingredient in
-            MealLog.MealLogItem(
+            MealLogItemDTO(
                 foodId: ingredient.id,
                 name: ingredient.name,
                 amount: ingredient.amount,
@@ -209,15 +222,20 @@ final class NutritionService: ObservableObject {
             loggedAt: Date(),
             mealType: mealType.rawValue,
             items: logItems,
-            totals: totals,
+            totals: NutritionTotalsDTO(
+                calories: totals.calories,
+                protein: totals.protein,
+                carbs: totals.carbs,
+                fat: totals.fat,
+                fiber: totals.fiber
+            ),
             source: source,
             notes: notes
         )
         
-        try await database.supabase
-            .from("meal_logs")
-            .insert(mealLogData)
-            .execute()
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode([mealLogData])
+        _ = try await database.restInsert(path: "meal_logs", body: body)
         
         // Refresh today's summary
         todaySummary = await getTodaySummary()
@@ -226,7 +244,7 @@ final class NutritionService: ObservableObject {
     }
     
     func savePlan(for date: Date, meals: [Meal]) async throws -> Bool {
-        guard let user = database.user else { throw NutritionError.userNotAuthenticated }
+        guard let user = auth.currentUser else { throw NutritionError.userNotAuthenticated }
         
         isLoading = true
         defer { isLoading = false }
@@ -247,29 +265,29 @@ final class NutritionService: ObservableObject {
             }
         )
         
-        try await database.supabase
-            .from("meal_plan_days")
-            .upsert(mealPlanData)
-            .execute()
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode([mealPlanData])
+        _ = try await database.restUpsert(path: "meal_plan_days", body: body)
         
         return true
     }
     
     func getMealPlan(for date: Date) async -> [Meal]? {
-        guard let user = database.user else { return nil }
+        guard let user = auth.currentUser else { return nil }
         
         do {
-            let dateString = ISO8601DateFormatter().string(from: date).prefix(10) // YYYY-MM-DD
-            let response = try await database.supabase
-                .from("meal_plan_days")
-                .select("meals")
-                .eq("user_id", value: user.id.uuidString)
-                .eq("date", value: String(dateString))
-                .single()
-                .execute()
-            
-            let data = response.data
-            let mealPlanResponse = try JSONDecoder().decode(MealPlanDayResponse.self, from: data)
+            let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+            let data = try await database.restSelect(
+                path: "meal_plan_days",
+                query: [
+                    URLQueryItem(name: "select", value: "meals"),
+                    URLQueryItem(name: "user_id", value: "eq.\(user.id.uuidString)"),
+                    URLQueryItem(name: "date", value: "eq.\(df.string(from: date))"),
+                    URLQueryItem(name: "limit", value: "1")
+                ]
+            )
+            let rows = try JSONDecoder().decode([MealPlanDayResponse].self, from: data)
+            guard let mealPlanResponse = rows.first else { return [] }
             return mealPlanResponse.meals.compactMap { $0.toMeal() }
             
         } catch {
@@ -279,20 +297,18 @@ final class NutritionService: ObservableObject {
     }
     
     func searchFoodItems(query: String) async -> [FoodItem] {
-        guard let user = database.user else { return [] }
-        
+        guard let user = auth.currentUser else { return [] }
         do {
-            let response = try await database.supabase
-                .from("food_items")
-                .select("*")
-                .or("name.ilike.%\(query)%,brand.ilike.%\(query)%")
-                .or("user_id.is.null,user_id.eq.\(user.id.uuidString)")
-                .limit(20)
-                .execute()
-            
-            let data = response.data
+            let data = try await database.restSelect(
+                path: "food_items",
+                query: [
+                    URLQueryItem(name: "select", value: "*"),
+                    URLQueryItem(name: "or", value: "name.ilike.%\(query)%,brand.ilike.%\(query)%"),
+                    URLQueryItem(name: "or", value: "user_id.is.null,user_id.eq.\(user.id.uuidString)"),
+                    URLQueryItem(name: "limit", value: "20")
+                ]
+            )
             return try JSONDecoder().decode([FoodItemResponse].self, from: data).map { $0.toFoodItem() }
-            
         } catch {
             print("Error searching food items: \(error)")
             return []
@@ -330,10 +346,10 @@ final class NutritionService: ObservableObject {
     
     private func calculateTotals(from items: [Ingredient]) -> MealLog.NutritionTotals {
         let calories = items.reduce(0.0) { $0 + Double($1.calories) }
-        let protein = items.reduce(0.0) { $0 + $1.macros.protein }
-        let carbs = items.reduce(0.0) { $0 + $1.macros.carbs }
-        let fat = items.reduce(0.0) { $0 + $1.macros.fat }
-        let fiber = items.reduce(0.0) { $0 + $1.macros.fiber }
+        let protein = items.reduce(0.0) { $0 + Double($1.macros.protein) }
+        let carbs = items.reduce(0.0) { $0 + Double($1.macros.carbs) }
+        let fat = items.reduce(0.0) { $0 + Double($1.macros.fat) }
+        let fiber = items.reduce(0.0) { $0 + Double($1.macros.fiber) }
         
         return MealLog.NutritionTotals(
             calories: calories,
@@ -350,7 +366,7 @@ final class NutritionService: ObservableObject {
 struct NutritionGoalsResponse: Codable {
     let targetCalories: Int?
     let targetMacros: [String: Double]?
-    let dietPreferences: [String: Any]?
+    let dietPreferences: [String: String]?
     let exclusions: [String]?
     let optInDailyAI: Bool?
     let preferredAITimeLocal: String?
@@ -389,10 +405,8 @@ struct NutritionGoalsResponse: Codable {
 
 struct NutritionGoalsRequest: Codable {
     let userId: UUID
-    let targetCalories: Double
-    let targetProtein: Double?
-    let targetCarbs: Double?
-    let targetFat: Double?
+    let targetCalories: Int?
+    let targetMacros: [String: Double]?
     let dietPreferences: [String: String]
     let exclusions: [String]
     let optInDailyAI: Bool
@@ -402,9 +416,7 @@ struct NutritionGoalsRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case targetCalories = "target_calories"
-        case targetProtein = "target_protein"
-        case targetCarbs = "target_carbs"
-        case targetFat = "target_fat"
+        case targetMacros = "target_macros"
         case dietPreferences = "diet_preferences"
         case exclusions
         case optInDailyAI = "opt_in_daily_ai"
@@ -463,13 +475,15 @@ struct NutritionSummaryResponse: Codable {
             mealsLogged: mealsLogged,
             lastUpdated: lastUpdate
         )
+    }
+}
 
 struct MealLogRequest: Codable {
     let userId: UUID
-    let meal: Meal
-    let timestamp: String
-    let items: [NutritionService.MealLog.MealLogItem]
-    let totals: NutritionService.MealLog.NutritionTotals
+    let loggedAt: Date
+    let mealType: String
+    let items: [NutritionService.MealLogItemDTO]
+    let totals: NutritionService.NutritionTotalsDTO
     let source: String
     let notes: String?
     
@@ -527,17 +541,7 @@ struct MealPlanDayResponse: Codable {
     let meals: [MealPlanMeal]
 }
 
-struct FoodItem {
-    let id: UUID
-    let name: String
-    let brand: String?
-    let serving: String
-    let calories: Int
-    let macros: MacroBreakdown
-    let tags: [String]
-    let isPublic: Bool
-    let source: String?
-}
+// NOTE: FoodItem is defined in shared models. Avoid redefining here to prevent type conflicts.
 
 struct FoodItemResponse: Codable {
     let id: UUID
@@ -557,22 +561,25 @@ struct FoodItemResponse: Codable {
     
     func toFoodItem() -> FoodItem {
         let macroBreakdown = MacroBreakdown(
-            protein: macros["protein"] ?? 0,
-            carbs: macros["carbs"] ?? 0,
-            fat: macros["fat"] ?? 0,
-            fiber: macros["fiber"] ?? 0
+            protein: Int(macros["protein"] ?? 0),
+            carbs: Int(macros["carbs"] ?? 0),
+            fat: Int(macros["fat"] ?? 0),
+            fiber: Int(macros["fiber"] ?? 0)
         )
-        
+        // Map API model to shared FoodItem (fill unknowns with sensible defaults)
         return FoodItem(
             id: id,
             name: name,
             brand: brand,
-            serving: serving,
-            calories: calories,
+            calories: calories, // per 100g
             macros: macroBreakdown,
-            tags: tags,
-            isPublic: isPublic,
-            source: source
+            micronutrients: nil,
+            servingSize: 100.0,
+            servingSizeUnit: "g",
+            barcode: nil,
+            verified: false,
+            createdAt: Date(),
+            updatedAt: Date()
         )
     }
 }

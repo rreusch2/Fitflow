@@ -27,6 +27,25 @@ class DatabaseService: ObservableObject {
         initialize()
     }
     
+    // MARK: - Public wrappers for REST/RPC (used by services)
+    
+    func callRPC(_ name: String, payload: [String: Any]) async throws -> Data {
+        try await rpc(name, payload: payload)
+    }
+    
+    func restSelect(path: String, query: [URLQueryItem]) async throws -> Data {
+        try await restRequest(path: path, method: "GET", query: query)
+    }
+    
+    func restInsert(path: String, body: Data, prefer: String? = "return=representation") async throws -> Data {
+        try await restRequest(path: path, method: "POST", body: body, prefer: prefer)
+    }
+    
+    func restUpsert(path: String, body: Data) async throws -> Data {
+        // PostgREST upsert via conflict target set on table; merge duplicates preference
+        try await restRequest(path: path, method: "POST", body: body, prefer: "resolution=merge-duplicates,return=representation")
+    }
+    
     // MARK: - Initialization
     
     func initialize() {

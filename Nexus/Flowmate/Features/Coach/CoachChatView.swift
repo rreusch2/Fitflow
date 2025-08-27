@@ -113,7 +113,7 @@ struct CoachChatView: View {
     }
     
     private var quickActionButton1: some View {
-        QuickActionButton(
+        CoachQuickActionButton(
             title: "Workout Plan", 
             systemImage: "figure.run", 
             gradient: LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -123,7 +123,7 @@ struct CoachChatView: View {
     }
     
     private var quickActionButton2: some View {
-        QuickActionButton(
+        CoachQuickActionButton(
             title: "Meal Plan", 
             systemImage: "fork.knife", 
             gradient: LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -133,7 +133,7 @@ struct CoachChatView: View {
     }
     
     private var quickActionButton3: some View {
-        QuickActionButton(
+        CoachQuickActionButton(
             title: "Analyze Progress", 
             systemImage: "chart.line.uptrend.xyaxis", 
             gradient: LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -143,7 +143,7 @@ struct CoachChatView: View {
     }
     
     private var quickActionButton4: some View {
-        QuickActionButton(
+        CoachQuickActionButton(
             title: "Daily Tips", 
             systemImage: "lightbulb.fill", 
             gradient: LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -153,7 +153,7 @@ struct CoachChatView: View {
     }
     
     private var quickActionButton5: some View {
-        QuickActionButton(
+        CoachQuickActionButton(
             title: "Form Check", 
             systemImage: "figure.strengthtraining.traditional", 
             gradient: LinearGradient(colors: [.indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
