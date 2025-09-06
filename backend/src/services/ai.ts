@@ -207,15 +207,67 @@ export class AIService {
   }
 
   private buildWorkoutPrompt(params: any): string {
-    return `Generate a workout plan as JSON with title, description, exercises array, and notes. 
-    User preferences: ${JSON.stringify(params.preferences)}
-    Overrides: ${JSON.stringify(params.overrides)}`;
+    return `You are a world-class fitness trainer. Generate a comprehensive workout plan as STRICT JSON only.
+
+REQUIRED JSON STRUCTURE:
+{
+  "title": "Creative workout name",
+  "description": "2-3 sentence description in Markdown",
+  "exercises": [
+    {
+      "name": "Exercise name",
+      "sets": 3,
+      "reps": "12-15",
+      "rest_seconds": 60,
+      "instructions": "Detailed form instructions in Markdown",
+      "primary_muscle": "target muscle",
+      "equipment": "required equipment"
+    }
+  ],
+  "notes": "Additional coaching tips in Markdown"
+}
+
+User Context:
+- Fitness Level: ${params.overrides.fitness_level || 'intermediate'}
+- Target Muscles: ${JSON.stringify(params.overrides.target_muscle_groups || ['full_body'])}
+- Available Equipment: ${JSON.stringify(params.overrides.equipment || ['bodyweight'])}
+- Duration: ${params.overrides.estimated_duration || 45} minutes
+- Preferences: ${JSON.stringify(params.preferences)}
+
+Generate 6-8 exercises with proper progression. Use Markdown formatting for instructions.`;
   }
 
   private buildMealPrompt(params: any): string {
-    return `Generate a meal plan as JSON with title, description, meals array, macro_breakdown, shopping_list, and notes.
-    User preferences: ${JSON.stringify(params.preferences)}
-    Overrides: ${JSON.stringify(params.overrides)}`;
+    return `You are a certified nutritionist. Generate a comprehensive meal plan as STRICT JSON only.
+
+REQUIRED JSON STRUCTURE:
+{
+  "title": "Creative meal plan name",
+  "description": "2-3 sentence description in Markdown",
+  "meals": [
+    {
+      "name": "Meal name",
+      "type": "breakfast|lunch|dinner|snack",
+      "calories": 450,
+      "macros": {"protein": 25, "carbs": 40, "fat": 15, "fiber": 8},
+      "ingredients": ["ingredient 1", "ingredient 2"],
+      "instructions": "Detailed cooking instructions in Markdown",
+      "prep_time": 15,
+      "difficulty": "easy|medium|hard"
+    }
+  ],
+  "macro_breakdown": {"protein": 150, "carbs": 200, "fat": 65, "fiber": 25},
+  "shopping_list": ["item 1", "item 2"],
+  "notes": "Nutritional tips and variations in Markdown"
+}
+
+User Context:
+- Target Calories: ${params.overrides.target_calories || 2000}
+- Dietary Restrictions: ${JSON.stringify(params.preferences.dietary_restrictions || [])}
+- Preferences: ${JSON.stringify(params.preferences)}
+- Goals: ${JSON.stringify(params.overrides.goals || ['maintain_weight'])}
+
+Generate 4-6 meals with balanced macronutrient distribution. Use Markdown formatting.`;
   }
 
   private buildChatPrompt(params: any): string {
