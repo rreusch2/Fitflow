@@ -12,36 +12,13 @@ export class AIService {
         apiKey: config.OPENAI_API_KEY,
       });
     }
+
     if (config.XAI_API_KEY) {
       this.xaiClient = new OpenAI({
         apiKey: config.XAI_API_KEY,
         baseURL: 'https://api.x.ai/v1',
       });
     }
-  }
-
-  async generateStockAnalysis(params: {
-    symbol: string;
-    analysisType?: string; // technical | fundamental | sentiment | comprehensive
-  }) {
-    const analysisType = params.analysisType || 'comprehensive';
-    const prompt = this.buildFinanceStockPrompt(params.symbol, analysisType);
-    const response = await this.callAI(prompt, 'finance-stock-analysis');
-
-    // Expecting strict JSON from model; normalize to expected fields
-    const now = new Date().toISOString();
-    return {
-      symbol: (response.symbol || params.symbol).toUpperCase(),
-      analysisType: response.analysisType || analysisType,
-      rating: response.rating || 'hold',
-      targetPrice: response.targetPrice ?? null,
-      reasoning: response.reasoning || 'No reasoning provided',
-      keyPoints: Array.isArray(response.keyPoints) ? response.keyPoints : [],
-      riskFactors: Array.isArray(response.riskFactors) ? response.riskFactors : [],
-      timeframe: response.timeframe || '3-12 months',
-      confidence: typeof response.confidence === 'number' ? response.confidence : 60,
-      generatedAt: response.generatedAt || now
-    };
   }
 
   async generateWorkoutPlan(params: {
@@ -287,31 +264,6 @@ Generate 4-6 meals with balanced macronutrient distribution. Use Markdown format
     return `Analyze progress data and provide JSON with trends array, summary string, and recommendations array.
     Entries: ${JSON.stringify(params.entries.slice(0, 10))}
     Goals: ${JSON.stringify(params.goals)}`;
-  }
-
-  private buildFinanceStockPrompt(symbol: string, analysisType: string): string {
-    return `You are a CFA charterholder-level financial analyst. Perform a ${analysisType} analysis of ${symbol}.
-Return STRICT JSON only with keys: symbol, analysisType, rating, targetPrice, reasoning, keyPoints, riskFactors, timeframe, confidence, generatedAt.
-Rules:
-- rating must be one of [strong_buy, buy, hold, sell, strong_sell]
-- analysisType must be one of [technical, fundamental, sentiment, comprehensive]
-- timeframe is a short string like "1-3 months" or "3-12 months" or "1-5 years"
-- confidence is 0-100 number
-- keyPoints: array of 3-6 short bullets
-- riskFactors: array of 2-5 concise risks
-Example JSON shape:
-{
-  "symbol": "${symbol}",
-  "analysisType": "${analysisType}",
-  "rating": "buy",
-  "targetPrice": 175.5,
-  "reasoning": "Concise rationale integrating data across valuation, growth, profitability, and technicals.",
-  "keyPoints": ["Point 1", "Point 2"],
-  "riskFactors": ["Risk 1", "Risk 2"],
-  "timeframe": "3-12 months",
-  "confidence": 78,
-  "generatedAt": "${new Date().toISOString()}"
-}`;
   }
 
   private getFallbackResponse(type: string): any {
