@@ -200,45 +200,41 @@ struct NutritionTotalsDTO: Codable {
     }
     
     func logMeal(mealType: MealType, items: [Ingredient], source: String = "manual", notes: String? = nil) async throws -> Bool {
-        guard let user = auth.currentUser else { throw NutritionError.userNotAuthenticated }
+        guard auth.currentUser != nil else { throw NutritionError.userNotAuthenticated }
         
         isLoading = true
         defer { isLoading = false }
         
-        // Calculate totals
-        let totals = calculateTotals(from: items)
-        
-        // Convert ingredients to meal log items
-        let logItems = items.map { ingredient in
-            MealLogItemDTO(
-                foodId: ingredient.id,
-                name: ingredient.name,
-                amount: ingredient.amount,
-                unit: ingredient.unit,
-                calories: ingredient.calories,
-                macros: ingredient.macros
-            )
+        // Build payload expected by backend RPC wrapper
+        var itemsJSON: [[String: Any]] = []
+        items.forEach { ing in
+            var obj: [String: Any] = [
+                "name": ing.name,
+                "amount": ing.amount,
+                "unit": ing.unit,
+                "calories": ing.calories,
+                "macros": [
+                    "protein": ing.macros.protein,
+                    "carbs": ing.macros.carbs,
+                    "fat": ing.macros.fat,
+                    "fiber": ing.macros.fiber
+                ]
+            ]
+            obj["food_id"] = ing.id.uuidString
+            itemsJSON.append(obj)
         }
+        var payload: [String: Any] = [
+            "meal_type": mealType.rawValue,
+            "items": itemsJSON,
+            "source": source
+        ]
+        if let notes = notes, !notes.isEmpty { payload["notes"] = notes }
         
-        let mealLogData = MealLogRequest(
-            userId: user.id,
-            loggedAt: Date(),
-            mealType: mealType.rawValue,
-            items: logItems,
-            totals: NutritionTotalsDTO(
-                calories: totals.calories,
-                protein: totals.protein,
-                carbs: totals.carbs,
-                fat: totals.fat,
-                fiber: totals.fiber
-            ),
-            source: source,
-            notes: notes
-        )
-        
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        let body = try encoder.encode([mealLogData])
-        _ = try await database.restInsert(path: "meal_logs", body: body)
+        // Send to backend API (adds Authorization header automatically)
+        let (_, resp) = try await BackendAPIClient.shared.sendJSON(path: "nutrition/log-meal", method: "POST", json: payload)
+        guard (200..<300).contains(resp.statusCode) else {
+            throw NutritionError.networkError
+        }
         
         // Refresh today's summary and meals
         todaySummary = await getTodaySummary()

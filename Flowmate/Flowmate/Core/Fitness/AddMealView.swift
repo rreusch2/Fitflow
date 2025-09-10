@@ -523,7 +523,9 @@ private struct LabeledTextField: View {
             amount: 1,
             unit: "serving",
             calories: calories,
-            macros: MacroBreakdown(protein: protein, carbs: carbs, fat: fat, fiber: 0)
+            macros: MacroBreakdown(protein: protein, carbs: carbs, fat: fat, fiber: 0),
+            isOptional: false,
+            substitutes: []
         )
         do {
             _ = try await nutritionService.logMeal(

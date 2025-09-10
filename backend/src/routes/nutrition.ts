@@ -11,17 +11,53 @@ export async function nutritionRoutes(server: FastifyInstance) {
         return reply.code(400).send({ error: 'meal_type and items are required' });
       }
 
+      // Primary: RPC path
       const { data, error } = await server.supabase.rpc('log_meal_with_totals', {
-        user_id_param: userId,
-        meal_type_param: meal_type,
-        items_param: items,
-        source_param: source,
-        notes_param: notes,
+        user_id: userId,
+        meal_type,
+        items,
+        source,
+        notes,
       });
 
       if (error) {
-        server.log.error({ err: error }, 'Error logging meal via RPC');
-        return reply.code(500).send({ error: 'Failed to log meal' });
+        server.log.warn({ err: error }, 'RPC log_meal_with_totals failed, attempting fallback insert');
+        // Fallback: compute totals in API and insert row directly
+        try {
+          const totals = (items as any[]).reduce(
+            (acc, it) => {
+              const macros = it.macros || {};
+              acc.calories += Number(it.calories || 0);
+              acc.protein += Number(macros.protein || 0);
+              acc.carbs += Number(macros.carbs || 0);
+              acc.fat += Number(macros.fat || 0);
+              acc.fiber += Number(macros.fiber || 0);
+              return acc;
+            },
+            { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+          );
+          const { data: inserted, error: insertError } = await server.supabase
+            .from('meal_logs')
+            .insert({
+              user_id: userId,
+              meal_type,
+              items,
+              totals,
+              source,
+              notes,
+            })
+            .select('id')
+            .single();
+
+          if (insertError) {
+            server.log.error({ err: insertError }, 'Fallback insert into meal_logs failed');
+            return reply.code(500).send({ error: 'Failed to log meal' });
+          }
+          return reply.send({ id: inserted?.id });
+        } catch (fbErr) {
+          server.log.error({ err: fbErr }, 'Unexpected error in fallback insert');
+          return reply.code(500).send({ error: 'Failed to log meal' });
+        }
       }
 
       return reply.send({ id: data });
@@ -43,9 +79,9 @@ export async function nutritionRoutes(server: FastifyInstance) {
       const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
       const { data, error } = await server.supabase.rpc('get_nutrition_summary', {
-        user_id_param: userId,
-        start_date_param: toDateStr(start),
-        end_date_param: toDateStr(end),
+        user_id: userId,
+        start_date: toDateStr(start),
+        end_date: toDateStr(end),
       });
 
       if (error) {
