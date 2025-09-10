@@ -54,48 +54,22 @@ class WorkoutService: ObservableObject {
             limitations: []
         )
         
-        let url = URL(string: "\(baseURL)/v1/ai/workout-plan")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // Add auth header if we have a token
-        print("🔥 DEBUG: WorkoutService - Auth token from UserDefaults: \(token ?? "nil")")
-        
-        if let token = token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            print("🔥 DEBUG: WorkoutService - Added Authorization header")
-        } else {
-            print("🔥 DEBUG: WorkoutService - No auth token found!")
-        }
-        
         do {
-            request.httpBody = try JSONEncoder().encode(requestBody)
-            print("🔥 DEBUG: WorkoutService - Making request to: \(url)")
-            print("🔥 DEBUG: WorkoutService - Request body: \(String(data: request.httpBody!, encoding: .utf8) ?? "nil")")
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw WorkoutServiceError.invalidResponse
-            }
-            
+            let bodyData = try JSONEncoder().encode(requestBody)
+            let bodyObj = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any] ?? [:]
+            print("🔥 DEBUG: WorkoutService - POST /ai/workout-plan with body: \(bodyObj)")
+            let (data, http) = try await BackendAPIClient.shared.sendJSON(path: "ai/workout-plan", method: "POST", json: bodyObj)
             let responseText = String(data: data, encoding: .utf8) ?? ""
-            print("🔥 DEBUG: WorkoutService - Response status: \(httpResponse.statusCode)")
+            print("🔥 DEBUG: WorkoutService - Response status: \(http.statusCode)")
             print("🔥 DEBUG: WorkoutService - Response body: \(responseText)")
-            
-            if httpResponse.statusCode == 401 {
+            if http.statusCode == 401 {
                 throw WorkoutServiceError.notAuthenticated
             }
-            
-            guard httpResponse.statusCode == 200 else {
-                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw WorkoutServiceError.apiError("Status: \(httpResponse.statusCode), Message: \(errorMessage)")
+            guard http.statusCode == 200 else {
+                throw WorkoutServiceError.apiError("Status: \(http.statusCode), Message: \(responseText)")
             }
-            
             let apiResponse = try JSONDecoder().decode(WorkoutAPIResponse.self, from: data)
             return apiResponse.plan
-            
         } catch let error as WorkoutServiceError {
             lastError = error.localizedDescription
             throw error

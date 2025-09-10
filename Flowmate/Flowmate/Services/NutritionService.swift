@@ -14,6 +14,7 @@ final class NutritionService: ObservableObject {
     
     @Published var goals: NutritionGoals?
     @Published var todaySummary: NutritionSummary?
+    @Published var todaysMeals: [Meal] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     
@@ -133,10 +134,12 @@ struct NutritionTotalsDTO: Codable {
         do {
             async let goalsTask = fetchGoals()
             async let summaryTask = getTodaySummary()
+            async let mealsTask = fetchTodaysMeals()
             
-            let (goals, summary) = await (goalsTask, summaryTask)
+            let (goals, summary, meals) = await (goalsTask, summaryTask, mealsTask)
             self.goals = goals
             self.todaySummary = summary
+            self.todaysMeals = meals ?? []
             
         } catch {
             errorMessage = "Failed to load nutrition data: \(error.localizedDescription)"
@@ -237,10 +240,87 @@ struct NutritionTotalsDTO: Codable {
         let body = try encoder.encode([mealLogData])
         _ = try await database.restInsert(path: "meal_logs", body: body)
         
-        // Refresh today's summary
+        // Refresh today's summary and meals
         todaySummary = await getTodaySummary()
+        if let meals = await fetchTodaysMeals() { self.todaysMeals = meals }
         
         return true
+    }
+
+    // MARK: - Meals Fetching
+    struct MealLogRowResponse: Codable {
+        let id: UUID
+        let mealType: String
+        let items: [MealLogItemDTO]
+        let totals: NutritionTotalsDTO
+        let notes: String?
+        let loggedAt: String?
+        
+        enum CodingKeys: String, CodingKey {
+            case id, items, totals, notes
+            case mealType = "meal_type"
+            case loggedAt = "logged_at"
+        }
+    }
+
+    func fetchTodaysMeals() async -> [Meal]? {
+        guard let user = auth.currentUser else { return [] }
+        do {
+            let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd"
+            let today = formatter.string(from: Date())
+            let data = try await database.restSelect(
+                path: "meal_logs",
+                query: [
+                    URLQueryItem(name: "select", value: "id, meal_type, items, totals, notes, logged_at"),
+                    URLQueryItem(name: "user_id", value: "eq.\(user.id.uuidString)"),
+                    URLQueryItem(name: "logged_date_utc", value: "eq.\(today)"),
+                    URLQueryItem(name: "order", value: "logged_at.desc")
+                ]
+            )
+            let rows = try JSONDecoder().decode([MealLogRowResponse].self, from: data)
+            return rows.compactMap { row in
+                guard let type = MealType(rawValue: row.mealType) else { return nil }
+                let ingredients: [Ingredient] = row.items.map { item in
+                    Ingredient(
+                        id: item.foodId ?? UUID(),
+                        name: item.name,
+                        amount: item.amount,
+                        unit: item.unit,
+                        calories: item.calories,
+                        macros: item.macros,
+                        isOptional: false,
+                        substitutes: []
+                    )
+                }
+                let totals = row.totals
+                let macros = MacroBreakdown(
+                    protein: Int(totals.protein.rounded()),
+                    carbs: Int(totals.carbs.rounded()),
+                    fat: Int(totals.fat.rounded()),
+                    fiber: Int(totals.fiber.rounded())
+                )
+                let caloriesInt = Int(totals.calories.rounded())
+                return Meal(
+                    id: row.id,
+                    type: type,
+                    name: row.notes ?? type.displayName,
+                    description: row.notes ?? "",
+                    calories: caloriesInt,
+                    macros: macros,
+                    ingredients: ingredients,
+                    instructions: [],
+                    prepTime: 0,
+                    cookTime: 0,
+                    servings: 1,
+                    difficulty: .beginner,
+                    tags: ["logged"],
+                    imageUrl: nil
+                )
+            }
+        } catch {
+            print("Error fetching today's meals: \(error)")
+            return []
+        }
     }
     
     func savePlan(for date: Date, meals: [Meal]) async throws -> Bool {

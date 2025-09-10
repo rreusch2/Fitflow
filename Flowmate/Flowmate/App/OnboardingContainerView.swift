@@ -552,13 +552,22 @@ private struct MotivationSlide: View {
         
         // Apply the selected theme immediately
         themeProvider.setTheme(style: selectedStyle, accent: selectedAccent)
-        // Persist motivations to backend preferences JSONB (array form)
-        let motivationKeys = selectedMotivations.map { $0.backendKey }
+        // Persist motivation hint as allowed motivation_triggers (schema-compliant)
+        // Map broad categories to trigger enums expected by backend
+        let triggers: [String] = selectedMotivations.flatMap { cat -> [String] in
+            switch cat {
+            case .aesthetics: return ["goal_reminder"]
+            case .performance: return ["pre_workout"]
+            case .weight: return ["progress_celebration"]
+            case .longevity: return ["morning_boost"]
+            case .mindset: return ["bad_day_pickup"]
+            }
+        }
         Task {
             do {
-                try await BackendAPIClient.shared.updateMotivations(motivationKeys)
+                try await BackendAPIClient.shared.updateMotivationTriggers(triggers)
             } catch {
-                print("⚠️ Failed to update motivations: \(error)")
+                print("⚠️ Failed to update motivation triggers: \(error)")
             }
             await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil)
         }

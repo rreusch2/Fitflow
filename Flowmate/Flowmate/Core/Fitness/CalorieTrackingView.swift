@@ -284,8 +284,7 @@ struct CalorieTrackingView: View {
     }
     
     private var todaysMeals: [Meal] {
-        // This would be fetched from nutritionService
-        []
+        nutritionService.todaysMeals
     }
     
     private var chartData: [CalorieDataPoint] {

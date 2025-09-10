@@ -26,18 +26,48 @@ struct BackendAPIClient {
 
     // MARK: - Generic authorized requests
     func get(path: String) async throws -> (Data, HTTPURLResponse) {
-        let req = try authorizedRequest(path: path, method: "GET", body: nil)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        var req = try authorizedRequest(path: path, method: "GET", body: nil)
+        var (data, resp) = try await URLSession.shared.data(for: req)
+        if let http = resp as? HTTPURLResponse, http.statusCode == 401, let _ = try await refreshAuthTokenIfPossible() {
+            // retry once with fresh token
+            req = try authorizedRequest(path: path, method: "GET", body: nil)
+            (data, resp) = try await URLSession.shared.data(for: req)
+        }
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
     }
 
     func sendJSON(path: String, method: String = "POST", json: [String: Any]) async throws -> (Data, HTTPURLResponse) {
         let body = try JSONSerialization.data(withJSONObject: json, options: [])
-        let req = try authorizedRequest(path: path, method: method, body: body)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        var req = try authorizedRequest(path: path, method: method, body: body)
+        var (data, resp) = try await URLSession.shared.data(for: req)
+        if let http = resp as? HTTPURLResponse, http.statusCode == 401, let _ = try await refreshAuthTokenIfPossible() {
+            // retry once with fresh token
+            req = try authorizedRequest(path: path, method: method, body: body)
+            (data, resp) = try await URLSession.shared.data(for: req)
+        }
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
+    }
+
+    // Attempt to refresh token via Supabase refresh token stored in UserDefaults. Returns new token if refreshed.
+    private func refreshAuthTokenIfPossible() async throws -> String? {
+        guard let refresh = UserDefaults.standard.string(forKey: "auth_refresh_token"), !refresh.isEmpty else {
+            return nil
+        }
+        do {
+            let session = try await DatabaseService.shared.authRefresh(refreshToken: refresh)
+            if let token = session.access_token {
+                UserDefaults.standard.set(token, forKey: "auth_access_token")
+                DatabaseService.shared.setAuthToken(token)
+            }
+            if let newRefresh = session.refresh_token {
+                UserDefaults.standard.set(newRefresh, forKey: "auth_refresh_token")
+            }
+            return session.access_token
+        } catch {
+            return nil
+        }
     }
 
     // MARK: - Preferences
@@ -52,14 +82,11 @@ struct BackendAPIClient {
         return (try JSONSerialization.jsonObject(with: respData) as? [String: Any]) ?? [:]
     }
 
-    // Helper: update motivations only (array form)
-    func updateMotivations(_ motivations: [String]) async throws {
-        _ = try await updatePreferences(["motivation": motivations])
-    }
-
-    // Helper: update motivation weights (map form)
-    func updateMotivationWeights(_ weights: [String: Double]) async throws {
-        _ = try await updatePreferences(["motivation": weights])
+    // Helper: update motivation triggers only (schema-compliant)
+    // Backend expects an object for motivation, not an array.
+    // Shape: { "motivation": { "motivation_triggers": ["morning_boost", ...] } }
+    func updateMotivationTriggers(_ triggers: [String]) async throws {
+        _ = try await updatePreferences(["motivation": ["motivation_triggers": triggers]])
     }
 
     // MARK: - Debug
