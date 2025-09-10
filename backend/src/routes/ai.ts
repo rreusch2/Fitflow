@@ -40,6 +40,8 @@ export async function aiRoutes(server: FastifyInstance) {
         overrides
       });
 
+      console.log('🔥 DEBUG: AI Generated workout plan:', JSON.stringify(workoutPlan, null, 2));
+
       // Save to database
       const { data: savedPlan, error } = await server.supabase
         .from('workout_plans')
@@ -59,6 +61,7 @@ export async function aiRoutes(server: FastifyInstance) {
         .single();
 
       if (error) {
+        console.log('🔥 DEBUG: Database save error:', error);
         server.log.error({ err: error }, 'Error saving workout plan');
         return reply.code(500).send({ error: 'Failed to save workout plan' });
       }
