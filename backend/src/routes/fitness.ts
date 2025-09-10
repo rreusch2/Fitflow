@@ -5,6 +5,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
   // Log a completed workout session
   server.post('/workout-sessions', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
+    const db = (request as any).supabaseUser || server.supabase;
     const {
       workout_type,
       duration_minutes,
@@ -14,7 +15,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
     } = request.body as any;
 
     try {
-      const { data: session, error } = await server.supabase
+      const { data: session, error } = await db
         .from('workout_sessions')
         .insert({
           user_id: userId,
@@ -29,7 +30,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
         .single();
 
       if (error) {
-        server.log.error({ err: error }, 'Error logging workout session');
+        server.log.error({ err: error, userId }, 'Error logging workout session');
         return reply.code(500).send({ error: 'Failed to log workout session' });
       }
 
@@ -43,9 +44,10 @@ export async function fitnessRoutes(server: FastifyInstance) {
   // Get recent workout sessions
   server.get('/workout-sessions', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
+    const db = (request as any).supabaseUser || server.supabase;
 
     try {
-      const { data: sessions, error } = await server.supabase
+      const { data: sessions, error } = await db
         .from('workout_sessions')
         .select('*')
         .eq('user_id', userId)
@@ -53,7 +55,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
         .limit(50);
 
       if (error) {
-        server.log.error({ err: error }, 'Error fetching workout sessions');
+        server.log.error({ err: error, userId }, 'Error fetching workout sessions');
         return reply.code(500).send({ error: 'Failed to fetch workout sessions' });
       }
 
@@ -67,20 +69,21 @@ export async function fitnessRoutes(server: FastifyInstance) {
   // Get weekly stats and progress metrics
   server.get('/weekly-stats', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
+    const db = (request as any).supabaseUser || server.supabase;
 
     try {
       // Get sessions from last 7 days
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
 
-      const { data: recentSessions, error: sessionsError } = await server.supabase
+      const { data: recentSessions, error: sessionsError } = await db
         .from('workout_sessions')
         .select('*')
         .eq('user_id', userId)
         .gte('completed_at', weekAgo.toISOString());
 
       if (sessionsError) {
-        server.log.error({ err: sessionsError }, 'Error fetching recent sessions');
+        server.log.error({ err: sessionsError, userId }, 'Error fetching recent sessions');
         return reply.code(500).send({ error: 'Failed to fetch progress data' });
       }
 
@@ -103,7 +106,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
         .map(([group]) => group);
 
       // Calculate current streak (consecutive days with workouts)
-      const { data: allSessions, error: allSessionsError } = await server.supabase
+      const { data: allSessions, error: allSessionsError } = await db
         .from('workout_sessions')
         .select('completed_at')
         .eq('user_id', userId)

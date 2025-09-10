@@ -21,11 +21,17 @@ struct BackendAPIClient {
         }
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.httpBody = body
+        #if DEBUG
+        let prefix = String(token.prefix(12))
+        print("🔥 BackendAPI authorizedRequest -> \(method) \(url.absoluteString), token(prefix): \(prefix)…")
+        #endif
         return req
     }
 
     // MARK: - Generic authorized requests
     func get(path: String) async throws -> (Data, HTTPURLResponse) {
+        // Ensure token exists; if missing, try refresh once before building request
+        if authToken() == nil { _ = try await refreshAuthTokenIfPossible() }
         var req = try authorizedRequest(path: path, method: "GET", body: nil)
         var (data, resp) = try await URLSession.shared.data(for: req)
         if let http = resp as? HTTPURLResponse, http.statusCode == 401, let _ = try await refreshAuthTokenIfPossible() {
@@ -39,6 +45,8 @@ struct BackendAPIClient {
 
     func sendJSON(path: String, method: String = "POST", json: [String: Any]) async throws -> (Data, HTTPURLResponse) {
         let body = try JSONSerialization.data(withJSONObject: json, options: [])
+        // Ensure token exists; if missing, try refresh once before building request
+        if authToken() == nil { _ = try await refreshAuthTokenIfPossible() }
         var req = try authorizedRequest(path: path, method: method, body: body)
         var (data, resp) = try await URLSession.shared.data(for: req)
         if let http = resp as? HTTPURLResponse, http.statusCode == 401, let _ = try await refreshAuthTokenIfPossible() {
