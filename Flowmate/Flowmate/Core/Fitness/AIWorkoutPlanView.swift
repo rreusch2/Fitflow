@@ -14,7 +14,6 @@ struct AIWorkoutPlanView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var completedExercises: Set<String> = []
     @State private var showShareSheet = false
-    @State private var isLogging = false
     
     var body: some View {
         NavigationStack {
@@ -33,6 +32,9 @@ struct AIWorkoutPlanView: View {
                     
                     // Exercises
                     exercisesList
+                    
+                    // Mark as Completed Button
+                    markCompletedButton
                     
                     // Actions are available via the toolbar (Share/Close)
                 }
@@ -56,21 +58,6 @@ struct AIWorkoutPlanView: View {
                         Image(systemName: "square.and.arrow.up")
                             .foregroundColor(themeProvider.theme.accent)
                     }
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await logCompleted() }
-                    } label: {
-                        if isLogging {
-                            ProgressView().tint(themeProvider.theme.accent)
-                        } else {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(themeProvider.theme.accent)
-                        }
-                    }
-                    .disabled(isLogging)
-                    .accessibilityLabel("Log Completed")
                 }
             }
         }
@@ -259,7 +246,49 @@ struct AIWorkoutPlanView: View {
         }
     }
     
-    // No extra action buttons; plans are automatically saved on generation.
+    // MARK: - Mark Completed Button
+    private var markCompletedButton: some View {
+        VStack(spacing: 12) {
+            if completedExercises.count == workout.exercises.count {
+                Button {
+                    Task {
+                        await logWorkoutCompletion()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Mark Workout Complete")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.green, Color.green.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: Color.green.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+            } else {
+                VStack(spacing: 8) {
+                    Text("Complete all exercises to log this workout")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("\(completedExercises.count)/\(workout.exercises.count) exercises completed")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(themeProvider.theme.accent)
+                }
+                .padding(.vertical, 12)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
     
     // MARK: - Helper Functions
     private func toggleExerciseCompletion(_ exerciseId: String) {
@@ -268,48 +297,6 @@ struct AIWorkoutPlanView: View {
         } else {
             completedExercises.insert(exerciseId)
         }
-    }
-    
-    // MARK: - Logging
-    private func logCompleted() async {
-        guard !isLogging else { return }
-        isLogging = true
-        defer { isLogging = false }
-        
-        // Map exercises
-        let completed: [CompletedExercise] = workout.exercises.map { ex in
-            let repsInt = firstInt(in: ex.reps ?? "") ?? 10
-            let setsInt = ex.sets ?? 3
-            let rest = TimeInterval((ex.rest_seconds ?? 90))
-            return CompletedExercise(
-                name: ex.name,
-                sets: setsInt,
-                reps: repsInt,
-                weight: nil,
-                restTime: rest,
-                completed: true,
-                notes: ex.instructions.isEmpty ? nil : ex.instructions
-            )
-        }
-        
-        let groups: [MuscleGroup] = workout.target_muscle_groups.compactMap { MuscleGroup(rawValue: $0) }
-        let duration = TimeInterval((workout.estimated_duration ?? 45) * 60)
-        
-        FitnessProgressService.shared.completeWorkout(
-            title: workout.title,
-            duration: duration,
-            exercises: completed,
-            muscleGroups: groups
-        )
-        HapticFeedback.success()
-        dismiss()
-    }
-    
-    private func firstInt(in text: String) -> Int? {
-        if let range = text.range(of: "\\d+", options: .regularExpression) {
-            return Int(text[range])
-        }
-        return nil
     }
     
     private func muscleGroupIcon(_ group: String) -> String {
@@ -325,6 +312,30 @@ struct AIWorkoutPlanView: View {
         case "cardio": return "heart.circle.fill"
         case "full_body": return "figure.strengthtraining.traditional"
         default: return "dumbbell.fill"
+        }
+    }
+    
+    private func logWorkoutCompletion() async {
+        let completedExercises = workout.exercises.compactMap { exercise -> WorkoutSessionService.CompletedExercise? in
+            guard completedExercises.contains(exercise.id) else { return nil }
+            return WorkoutSessionService.CompletedExercise(
+                name: exercise.displayName,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                weight: exercise.equipment,
+                notes: nil
+            )
+        }
+        
+        let success = await WorkoutSessionService.shared.logAIWorkoutCompletion(
+            workoutPlan: workout,
+            duration: workout.estimated_duration,
+            completedExercises: completedExercises,
+            notes: nil
+        )
+        
+        if success {
+            dismiss()
         }
     }
     

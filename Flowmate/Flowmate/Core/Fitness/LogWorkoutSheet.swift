@@ -109,36 +109,38 @@ struct LogWorkoutSheet: View {
     private func save() {
         isSaving = true
         error = nil
-        let completed: [CompletedExercise] = exercises.compactMap { ex in
-            guard !ex.name.trimmingCharacters(in: .whitespaces).isEmpty, ex.sets > 0, ex.reps > 0 else { return nil }
-            return CompletedExercise(
+        
+        let completedExercises: [WorkoutSessionService.CompletedExercise] = exercises.compactMap { ex in
+            guard !ex.name.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            return WorkoutSessionService.CompletedExercise(
                 name: ex.name,
-                sets: ex.sets,
-                reps: ex.reps,
-                weight: ex.weight,
-                restTime: TimeInterval(ex.restSeconds),
-                completed: false,
+                sets: ex.sets > 0 ? ex.sets : nil,
+                reps: ex.reps > 0 ? "\(ex.reps)" : nil,
+                weight: ex.weight != nil ? "\(ex.weight!)kg" : nil,
                 notes: ex.notes.isEmpty ? nil : ex.notes
             )
         }
-        let duration = TimeInterval(durationMinutes * 60)
-        // Simple calorie estimation to match service heuristic (8 kcal/min for strength)
-        let calories = Int((duration / 60.0) * 8.0)
-        let session = WorkoutSession(
-            id: UUID(),
-            title: title,
-            date: date,
-            duration: duration,
-            exercises: completed,
-            muscleGroups: Array(selectedMuscleGroups),
-            caloriesBurned: calories,
-            averageHeartRate: Int.random(in: 125...160),
-            notes: notes.isEmpty ? nil : notes
-        )
-        FitnessProgressService.shared.logWorkout(session)
-        HapticFeedback.success()
-        isSaving = false
-        dismiss()
+        
+        let muscleGroupStrings = selectedMuscleGroups.map { $0.rawValue }
+        
+        Task {
+            let success = await WorkoutSessionService.shared.logManualWorkout(
+                type: "manual",
+                duration: durationMinutes,
+                exercises: completedExercises,
+                muscleGroups: muscleGroupStrings,
+                notes: notes.isEmpty ? nil : notes
+            )
+            
+            await MainActor.run {
+                isSaving = false
+                if success {
+                    dismiss()
+                } else {
+                    error = "Failed to save workout. Please try again."
+                }
+            }
+        }
     }
 }
 

@@ -22,7 +22,6 @@ struct EnhancedFitnessView: View {
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
     @State private var showLogWorkout = false
-    @State private var showWorkoutHistory = false
     @State private var showProgressTracker = false
     @State private var showNutritionInsights = false
     @State private var showFitnessSettings = false
@@ -95,9 +94,12 @@ struct EnhancedFitnessView: View {
                 AIWorkoutPlanView(workout: workout)
                     .environmentObject(themeProvider)
             }
-            // Removed obsolete LogWorkoutSheet; using LogWorkoutView below
+            .sheet(isPresented: $showLogWorkout) {
+                LogWorkoutSheet()
+                    .environmentObject(themeProvider)
+            }
             .sheet(isPresented: $showProgressTracker) {
-                ProgressTrackerView()
+                EnhancedProgressTrackerView()
                     .environmentObject(themeProvider)
             }
             .sheet(isPresented: $showNutritionInsights) {
@@ -111,14 +113,6 @@ struct EnhancedFitnessView: View {
             }
             .sheet(isPresented: $showWorkoutLibrary) {
                 MyAIWorkoutsView()
-                    .environmentObject(themeProvider)
-            }
-            .sheet(isPresented: $showLogWorkout) {
-                LogWorkoutView()
-                    .environmentObject(themeProvider)
-            }
-            .sheet(isPresented: $showWorkoutHistory) {
-                WorkoutHistoryView()
                     .environmentObject(themeProvider)
             }
             .alert("Workout Generation Failed", isPresented: $showErrorAlert) {
@@ -394,15 +388,6 @@ struct EnhancedFitnessView: View {
                         showWorkoutLibrary = true
                     }
                     
-                    QuickActionCard(
-                        title: "Workout History",
-                        subtitle: "Completed sessions",
-                        icon: "list.bullet.rectangle.portrait.fill",
-                        gradient: [Color.indigo, Color.blue]
-                    ) {
-                        showWorkoutHistory = true
-                    }
-
                     QuickActionCard(
                         title: "Progress Tracker",
                         subtitle: "View your journey",

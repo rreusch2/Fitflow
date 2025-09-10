@@ -35,8 +35,11 @@ struct OnboardingContainerView: View {
         motivationTriggers: [.morningBoost],
         preferredTimes: [.morning]
     )
+    @State private var selectedMotivations: Set<MotivationArchetype> = []
     @State private var selectedInterests: Set<UserInterest> = []
     @State private var showResumePrompt: Bool = false
+    @State private var showPersonalizationDebug: Bool = false
+    @State private var personalizationContext: String = ""
     // Additional category-specific onboarding state
     @State private var businessFocus: BusinessFocus = .productivity
     @State private var workStyle: WorkStyle = .remote
@@ -66,6 +69,7 @@ struct OnboardingContainerView: View {
         case welcome
         case interests
         case theme
+        case motivations
         case fitness
         case nutrition
         case business
@@ -75,9 +79,149 @@ struct OnboardingContainerView: View {
         case relationships
         case summary
     }
+
+// MARK: - Motivation Archetypes & Slide
+
+enum MotivationArchetype: String, CaseIterable, Codable, Hashable {
+    case aesthetics
+    case performance
+    case weight
+    case longevity
+    case mindset
+
+    var title: String {
+        switch self {
+        case .aesthetics: return "Aesthetics"
+        case .performance: return "Performance"
+        case .weight: return "Weight Management"
+        case .longevity: return "Longevity & Health"
+        case .mindset: return "Mindset & Stress"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .aesthetics: return "Look and feel your best"
+        case .performance: return "Strength, endurance, PRs"
+        case .weight: return "Cutting, recomposition, adherence"
+        case .longevity: return "Mobility, recovery, sleep, health"
+        case .mindset: return "Stress relief, routine, enjoyment"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .aesthetics: return "person.crop.circle"
+        case .performance: return "bolt.fill"
+        case .weight: return "scalemass"
+        case .longevity: return "heart.text.square"
+        case .mindset: return "brain.head.profile"
+        }
+    }
+
+    // Keys acceptable by backend personalization
+    var backendKey: String {
+        switch self {
+        case .aesthetics: return "aesthetics"
+        case .performance: return "performance"
+        case .weight: return "weight" // maps to weight_management server-side
+        case .longevity: return "longevity"
+        case .mindset: return "mindset"
+        }
+    }
+}
+
+private struct MotivationChip: View {
+    let item: MotivationArchetype
+    let selected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Image(systemName: item.icon)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title).font(.subheadline).fontWeight(.semibold)
+                    Text(item.subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.secondarySystemBackground))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MotivationSlide: View {
+    @EnvironmentObject var themeProvider: ThemeProvider
+    @Binding var selected: Set<MotivationArchetype>
+    var onContinue: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 8) {
+                Text("What drives your approach?")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .readableText()
+                    .multilineTextAlignment(.center)
+                Text("Pick up to 3. This personalizes workouts and nutrition.")
+                    .font(.subheadline)
+                    .foregroundColor(.textSecondary)
+            }
+            .padding(.top, 12)
+
+            List {
+                ForEach(MotivationArchetype.allCases, id: \.self) { item in
+                    MotivationChip(item: item, selected: selected.contains(item)) {
+                        withAnimation(.spring) {
+                            if selected.contains(item) {
+                                selected.remove(item)
+                            } else {
+                                if selected.count < 3 { selected.insert(item) }
+                            }
+                        }
+                        HapticFeedback.light()
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .padding(.vertical, 4)
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
+
+            Spacer(minLength: 8)
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                Button(action: onContinue) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(themeProvider.theme.accent)
+                        .clipShape(Circle())
+                        .shadow(color: themeProvider.theme.accent.opacity(0.35), radius: 10, x: 0, y: 6)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 20)
+                .padding(.bottom, 6)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
     
     private func buildPages() -> [OnboardingPage] {
         var pages: [OnboardingPage] = [.welcome, .interests, .theme]
+        pages.append(.motivations)
         if selectedInterests.contains(.fitness) { pages.append(.fitness) }
         if selectedInterests.contains(.fitness) || selectedInterests.contains(.health) { pages.append(.nutrition) }
         if selectedInterests.contains(.business) { pages.append(.business) }
@@ -248,6 +392,8 @@ struct OnboardingContainerView: View {
             InterestsSlide(selectedInterests: $selectedInterests, onContinue: nextStep)
         case .theme:
             ThemeStyleSlide(style: $selectedStyle, accent: $selectedAccent, onContinue: nextStep)
+        case .motivations:
+            MotivationSlide(selected: $selectedMotivations, onContinue: nextStep)
         case .fitness:
             FitnessSlide(prefs: $fitnessPrefs, isRelevant: selectedInterests.contains(.fitness))
         case .nutrition:
@@ -329,6 +475,38 @@ struct OnboardingContainerView: View {
             } message: {
                 Text("We found a saved onboarding session. Would you like to continue where you left off?")
             }
+            .sheet(isPresented: $showPersonalizationDebug) {
+                NavigationView {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Personalization Context")
+                                .font(.title2.bold())
+                            
+                            Text("This is what the AI receives to personalize responses:")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            Text(personalizationContext)
+                                .font(.system(.body, design: .monospaced))
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            
+                            Spacer()
+                        }
+                        .padding()
+                    }
+                    .navigationTitle("Debug")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showPersonalizationDebug = false
+                            }
+                        }
+                    }
+                }
+            }
     }
 
     private func indexOf(_ page: OnboardingPage) -> Int {
@@ -372,7 +550,16 @@ struct OnboardingContainerView: View {
         
         // Apply the selected theme immediately
         themeProvider.setTheme(style: selectedStyle, accent: selectedAccent)
-        Task { await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil) }
+        // Persist motivations to backend preferences JSONB (array form)
+        let motivationKeys = selectedMotivations.map { $0.backendKey }
+        Task {
+            do {
+                try await BackendAPIClient.shared.updateMotivations(motivationKeys)
+            } catch {
+                print("⚠️ Failed to update motivations: \(error)")
+            }
+            await authService.completeOnboarding(preferences: userPreferences, healthProfile: nil)
+        }
     }
 }
 
@@ -1693,45 +1880,71 @@ private struct SummarySlide: View {
             .padding(.bottom, 100)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onComplete) {
-                HStack(spacing: 16) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 24, weight: .medium))
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Enter Your Flowmate")
-                            .font(.system(size: 18, weight: .bold))
-                        Text("Start your personalized journey")
-                            .font(.system(size: 14, weight: .medium))
-                            .opacity(0.9)
+            VStack(spacing: 12) {
+                #if DEBUG
+                Button("🔍 Debug Personalization Context") {
+                    Task {
+                        do {
+                            let context = try await BackendAPIClient.shared.getPersonalizationContext()
+                            await MainActor.run {
+                                personalizationContext = context
+                                showPersonalizationDebug = true
+                            }
+                        } catch {
+                            await MainActor.run {
+                                personalizationContext = "Error: \(error.localizedDescription)"
+                                showPersonalizationDebug = true
+                            }
+                        }
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 24))
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 18)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            themeProvider.theme.accent,
-                            themeProvider.theme.accent.opacity(0.85),
-                            themeProvider.theme.emphasis
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                .font(.caption)
+                .foregroundColor(themeProvider.theme.accent)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.clear)
+                #endif
+                
+                Button(action: onComplete) {
+                    HStack(spacing: 16) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 24, weight: .medium))
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Enter Your Flowmate")
+                                .font(.system(size: 18, weight: .bold))
+                            Text("Start your personalized journey")
+                                .font(.system(size: 14, weight: .medium))
+                                .opacity(0.9)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.system(size: 24))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                themeProvider.theme.accent,
+                                themeProvider.theme.accent.opacity(0.85),
+                                themeProvider.theme.emphasis
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(color: themeProvider.theme.accent.opacity(0.4), radius: 12, x: 0, y: 6)
-                )
-                .scaleEffect(1.0)
-                .animation(.bouncy, value: UUID())
+                    .scaleEffect(1.0)
+                    .animation(.bouncy, value: UUID())
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .buttonStyle(PlainButtonStyle())
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
         }

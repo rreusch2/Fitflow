@@ -34,12 +34,6 @@ class FitnessProgressService: ObservableObject {
         }
     }
     
-    // Public reload API for views to refresh from backend
-    @MainActor
-    func reloadFromBackend() async {
-        await loadFromBackend()
-    }
-    
     // MARK: - Workout Logging
     
     func logWorkout(_ session: WorkoutSession) {
@@ -361,7 +355,7 @@ class FitnessProgressService: ObservableObject {
         
         // Fetch data from backend
         do {
-            let history = try await BackendWorkoutService.shared.fetchSessions()
+            let history = try await databaseService.getWorkoutHistory(for: userId)
             let ach = try await databaseService.getFitnessAchievements(for: userId)
             let weekStart = Calendar.current.startOfWeek(for: Date())
             let stats = try await databaseService.getWeeklyStats(for: userId, weekStart: weekStart)
@@ -385,7 +379,7 @@ class FitnessProgressService: ObservableObject {
         // Persist recent changes
         do {
             if let last = workoutHistory.last {
-                try await BackendWorkoutService.shared.postSession(last)
+                try await databaseService.saveWorkoutSession(userId: userId, last)
             }
             
             let weekStart = Calendar.current.startOfWeek(for: Date())

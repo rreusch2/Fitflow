@@ -1,8 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import { GenerateWorkoutPlanSchema, GenerateMealPlanSchema } from '../schemas/ai';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { AIService } from '../services/ai';
 import { NutritionAIService } from '../services/nutritionAI';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { aiUsageLogger, AIUsageLogger } from '../services/aiUsage';
+import { GenerateWorkoutPlanSchema, GenerateMealPlanSchema } from '../schemas/ai';
 
 export async function aiRoutes(server: FastifyInstance) {
   const aiService = new AIService();
@@ -42,6 +44,19 @@ export async function aiRoutes(server: FastifyInstance) {
       });
 
       console.log('🔥 DEBUG: AI Generated workout plan:', JSON.stringify(workoutPlan, null, 2));
+
+      // Log AI usage for tracking
+      if (workoutPlan.aiResponse) {
+        const usageLog = AIUsageLogger.createUsageLog(
+          userId,
+          '/ai/workout-plan',
+          'grok-3-latest',
+          workoutPlan.aiResponse,
+          workoutPlan.personalizationContext,
+          { overrides }
+        );
+        await aiUsageLogger.logUsage(usageLog);
+      }
 
       // Save to database
       const { data: savedPlan, error } = await server.supabase
@@ -153,6 +168,19 @@ export async function aiRoutes(server: FastifyInstance) {
         healthProfile: healthProfile || {},
         overrides
       });
+
+      // Log AI usage for tracking
+      if (mealPlan.aiResponse) {
+        const usageLog = AIUsageLogger.createUsageLog(
+          userId,
+          '/ai/meal-plan',
+          'grok-3-latest',
+          mealPlan.aiResponse,
+          mealPlan.personalizationContext,
+          { overrides }
+        );
+        await aiUsageLogger.logUsage(usageLog);
+      }
 
       // Save to database
       const { data: savedPlan, error } = await server.supabase
