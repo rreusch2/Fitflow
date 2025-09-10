@@ -62,9 +62,9 @@ struct MemoriesView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search memories...")
-            .onChange(of: searchText) { _ in filterMemories() }
-            .onChange(of: selectedCategory) { _ in filterMemories() }
-            .onChange(of: showOnlyFavorites) { _ in filterMemories() }
+            .onChange(of: searchText) { filterMemories() }
+            .onChange(of: selectedCategory) { filterMemories() }
+            .onChange(of: showOnlyFavorites) { filterMemories() }
             .onAppear {
                 loadMemories()
             }

@@ -117,11 +117,9 @@ struct MealDetailView: View {
                     Text(meal.type.emoji)
                         .font(.system(size: 48))
                     
-                    if let timestamp = meal.timestamp {
-                        Text(timestamp.formatted(date: .omitted, time: .shortened))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(themeProvider.theme.textSecondary)
-                    }
+                    Text("Today")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
                 }
             }
         }
@@ -138,21 +136,21 @@ struct MealDetailView: View {
             HStack(spacing: 16) {
                 MacroCard(
                     title: "Protein",
-                    value: meal.macros.protein,
+                    value: Double(meal.macros.protein),
                     percentage: proteinPercentage,
                     color: .red
                 )
                 
                 MacroCard(
                     title: "Carbs",
-                    value: meal.macros.carbs,
+                    value: Double(meal.macros.carbs),
                     percentage: carbsPercentage,
                     color: .orange
                 )
                 
                 MacroCard(
                     title: "Fat",
-                    value: meal.macros.fat,
+                    value: Double(meal.macros.fat),
                     percentage: fatPercentage,
                     color: .green
                 )
@@ -235,7 +233,7 @@ struct MealDetailView: View {
                 InfoRow(
                     icon: "clock",
                     title: "Time",
-                    value: meal.timestamp?.formatted(date: .abbreviated, time: .shortened) ?? "Not recorded"
+                    value: "Today"
                 )
                 
                 InfoRow(
@@ -263,22 +261,25 @@ struct MealDetailView: View {
     // MARK: - Computed Properties
     
     private var totalMacroCalories: Double {
-        (meal.macros.protein * 4) + (meal.macros.carbs * 4) + (meal.macros.fat * 9)
+        let protein = Double(meal.macros.protein)
+        let carbs = Double(meal.macros.carbs)
+        let fat = Double(meal.macros.fat)
+        return (protein * 4) + (carbs * 4) + (fat * 9)
     }
     
     private var proteinPercentage: Double {
         guard totalMacroCalories > 0 else { return 0 }
-        return (meal.macros.protein * 4 / totalMacroCalories) * 100
+        return (Double(meal.macros.protein) * 4 / totalMacroCalories) * 100
     }
     
     private var carbsPercentage: Double {
         guard totalMacroCalories > 0 else { return 0 }
-        return (meal.macros.carbs * 4 / totalMacroCalories) * 100
+        return (Double(meal.macros.carbs) * 4 / totalMacroCalories) * 100
     }
     
     private var fatPercentage: Double {
         guard totalMacroCalories > 0 else { return 0 }
-        return (meal.macros.fat * 9 / totalMacroCalories) * 100
+        return (Double(meal.macros.fat) * 9 / totalMacroCalories) * 100
     }
     
     // MARK: - Methods

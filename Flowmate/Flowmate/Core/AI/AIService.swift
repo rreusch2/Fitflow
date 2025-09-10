@@ -31,112 +31,11 @@ class AIService: ObservableObject {
         loadDailyUsage()
     }
     
-    // MARK: - Workout Plan Generation
+    // MARK: - Legacy Workout Generation (Moved to Backend)
+    // Workout generation now handled by WorkoutService -> Backend API
     
-    func generateWorkoutPlan(for user: User) async throws -> WorkoutPlan {
-        guard let preferences = user.preferences else {
-            throw AIError.missingUserPreferences
-        }
-        
-        try await checkRateLimit(for: user)
-        
-        let cacheKey = "workout_plan_\(user.id)_\(preferences.fitness.level.rawValue)"
-        
-        // Check cache first
-        if let cachedPlan: WorkoutPlan = cache.get(key: cacheKey) {
-            return cachedPlan
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let prompt = createWorkoutPlanPrompt(preferences: preferences, healthProfile: user.healthProfile)
-            let response = try await callAIAPI(prompt: prompt, type: .workoutGeneration)
-            let workoutPlan = try parseWorkoutPlanResponse(response, userId: user.id)
-            
-            // Cache the result
-            cache.set(key: cacheKey, value: workoutPlan, ttl: Config.Cache.workoutPlanTTL)
-            
-            // Update usage tracking
-            incrementUsage()
-            
-            return workoutPlan
-            
-        } catch {
-            errorMessage = handleAIError(error)
-            throw error
-        }
-    }
-    
-    func generateCustomWorkoutPlan(
-        for user: User,
-        duration: Int,
-        focusAreas: [MuscleGroup],
-        equipment: [Equipment],
-        difficulty: FitnessLevel
-    ) async throws -> WorkoutPlan {
-        try await checkRateLimit(for: user)
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let prompt = createCustomWorkoutPrompt(
-                preferences: user.preferences,
-                duration: duration,
-                focusAreas: focusAreas,
-                equipment: equipment,
-                difficulty: difficulty
-            )
-            
-            let response = try await callAIAPI(prompt: prompt, type: .workoutGeneration)
-            let workoutPlan = try parseWorkoutPlanResponse(response, userId: user.id)
-            
-            incrementUsage()
-            return workoutPlan
-            
-        } catch {
-            errorMessage = handleAIError(error)
-            throw error
-        }
-    }
-    
-    // MARK: - Meal Plan Generation
-    
-    func generateMealPlan(for user: User) async throws -> MealPlan {
-        guard let preferences = user.preferences else {
-            throw AIError.missingUserPreferences
-        }
-        
-        try await checkRateLimit(for: user)
-        
-        let cacheKey = "meal_plan_\(user.id)_\(preferences.nutrition.calorieGoal.rawValue)"
-        
-        // Check cache first
-        if let cachedPlan: MealPlan = cache.get(key: cacheKey) {
-            return cachedPlan
-        }
-        
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let prompt = createMealPlanPrompt(preferences: preferences, healthProfile: user.healthProfile)
-            let response = try await callAIAPI(prompt: prompt, type: .mealGeneration)
-            let mealPlan = try parseMealPlanResponse(response, userId: user.id)
-            
-            // Cache the result
-            cache.set(key: cacheKey, value: mealPlan, ttl: Config.Cache.mealPlanTTL)
-            
-            incrementUsage()
-            return mealPlan
-            
-        } catch {
-            errorMessage = handleAIError(error)
-            throw error
-        }
-    }
+    // MARK: - Legacy Meal Plan Generation (Moved to Backend) 
+    // Meal generation now handled by NutritionAIService -> Backend API
     
     // MARK: - Chat Completion
     

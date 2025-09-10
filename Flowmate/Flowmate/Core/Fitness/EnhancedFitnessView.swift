@@ -16,8 +16,11 @@ struct EnhancedFitnessView: View {
     @State private var selectedDifficulty: DifficultyLevel = .intermediate
     @State private var selectedDuration: AIWorkoutDuration = .medium
     @State private var isGeneratingWorkout = false
-    @State private var generatedWorkout: AIWorkoutPlan?
+    @State private var generatedWorkout: WorkoutPlanResponse?
     @State private var showWorkoutPlan = false
+    @StateObject private var workoutService = WorkoutService.shared
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
     @State private var showLogWorkout = false
     @State private var showProgressTracker = false
     @State private var showNutritionInsights = false
@@ -88,7 +91,7 @@ struct EnhancedFitnessView: View {
             }
             .sheet(isPresented: $showWorkoutPlan) {
                 if let workout = generatedWorkout {
-                    WorkoutPlanView(workout: workout)
+                    AIWorkoutPlanView(workout: workout)
                         .environmentObject(themeProvider)
                 }
             }
@@ -108,6 +111,11 @@ struct EnhancedFitnessView: View {
                 FitnessSettingsView()
                     .environmentObject(themeProvider)
                     .environmentObject(authService)
+            }
+            .alert("Workout Generation Failed", isPresented: $showErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -293,14 +301,18 @@ struct EnhancedFitnessView: View {
             
             // Generate Button
             Button {
-                generateWorkout()
+                print("🔥 DEBUG: Generate AI Workout button pressed!")
+                print("🔥 DEBUG: Selected muscle groups: \(selectedMuscleGroups)")
+                Task {
+                    await generateWorkout()
+                }
             } label: {
                 HStack {
-                    if isGeneratingWorkout {
+                    if workoutService.isGeneratingWorkout {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
-                        Text("Generating...")
+                        Text("Generating with AI...")
                     } else {
                         Image(systemName: "sparkles")
                         Text("Generate AI Workout")
@@ -322,7 +334,7 @@ struct EnhancedFitnessView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .disabled(selectedMuscleGroups.isEmpty || isGeneratingWorkout)
+            .disabled(selectedMuscleGroups.isEmpty || workoutService.isGeneratingWorkout)
         }
         .padding(20)
         .background(
@@ -466,35 +478,40 @@ struct EnhancedFitnessView: View {
     }
     
     // MARK: - Functions
-    private func generateWorkout() {
-        guard !selectedMuscleGroups.isEmpty else { return }
+    private func generateWorkout() async {
+        print("🔥 DEBUG: generateWorkout() function called")
         
-        isGeneratingWorkout = true
+        guard !selectedMuscleGroups.isEmpty else { 
+            print("🔥 DEBUG: No muscle groups selected, returning early")
+            return 
+        }
         
-        // Simulate AI generation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            let workout = AIWorkoutPlan(
-                title: "\(selectedWorkoutType.displayName) Workout",
+        print("🔥 DEBUG: About to call workoutService.generateWorkout")
+        
+        do {
+            let workout = try await workoutService.generateWorkout(
                 muscleGroups: Array(selectedMuscleGroups),
+                workoutType: selectedWorkoutType,
                 duration: selectedDuration,
-                difficulty: selectedDifficulty,
-                exercises: generateExercises()
+                difficulty: selectedDifficulty
             )
             
-            generatedWorkout = workout
-            isGeneratingWorkout = false
-            showWorkoutPlan = true
+            print("🔥 DEBUG: Workout generation successful!")
+            
+            await MainActor.run {
+                generatedWorkout = workout
+                showWorkoutPlan = true
+                HapticFeedback.success()
+            }
+            
+        } catch {
+            print("🔥 DEBUG: Workout generation failed: \(error)")
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                HapticFeedback.error()
+            }
         }
-    }
-    
-    private func generateExercises() -> [AIExercise] {
-        // This would be replaced with actual AI generation
-        return [
-            AIExercise(name: "Barbell Squats", sets: 4, reps: "8-10", rest: "2-3 min", notes: "Focus on depth and control"),
-            AIExercise(name: "Romanian Deadlifts", sets: 3, reps: "10-12", rest: "2 min", notes: "Keep bar close to body"),
-            AIExercise(name: "Bulgarian Split Squats", sets: 3, reps: "8 each leg", rest: "90 sec", notes: "Control the descent"),
-            AIExercise(name: "Calf Raises", sets: 4, reps: "15-20", rest: "1 min", notes: "Full range of motion")
-        ]
     }
 }
 

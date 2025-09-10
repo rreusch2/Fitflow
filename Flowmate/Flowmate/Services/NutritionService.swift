@@ -59,7 +59,7 @@ struct NutritionTotalsDTO: Codable {
     
     // MARK: - Data Models
     
-    struct NutritionGoals {
+    struct NutritionGoals: Codable {
         var targetCalories: Int?
         var targetMacros: TargetMacros?
         var dietPreferences: DietPreferences?
@@ -68,13 +68,13 @@ struct NutritionTotalsDTO: Codable {
         var preferredAITime: Date?
         var timezone: String?
         
-        struct TargetMacros {
+        struct TargetMacros: Codable {
             var protein: Double?
             var carbs: Double?
             var fat: Double?
         }
         
-        struct DietPreferences {
+        struct DietPreferences: Codable {
             var dietType: String? // "vegetarian", "vegan", "keto", etc.
             var allergies: [String]
             var dislikes: [String]

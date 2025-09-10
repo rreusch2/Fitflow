@@ -21,7 +21,10 @@ class FitnessProgressService: ObservableObject {
     @Published var streakCount: Int = 0
     @Published var weeklyStats: WeeklyStats = WeeklyStats()
     
-    private let authService = AuthenticationService.shared
+    @MainActor
+    private var authService: AuthenticationService {
+        AuthenticationService.shared
+    }
     private let databaseService = DatabaseService.shared
     
     private init() {

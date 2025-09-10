@@ -272,7 +272,7 @@ struct CalorieTrackingView: View {
     }
     
     private var targetCalories: Double {
-        nutritionService.goals?.targetCalories ?? 2000
+        Double(nutritionService.goals?.targetCalories ?? 2000)
     }
     
     private var progressColor: Color {
@@ -313,9 +313,9 @@ struct CalorieTrackingView: View {
     private var averageCarbs: Double { 220 }
     private var averageFat: Double { 85 }
     
-    private var targetProtein: Double { nutritionService.goals?.targetProtein ?? 120 }
-    private var targetCarbs: Double { nutritionService.goals?.targetCarbs ?? 250 }
-    private var targetFat: Double { nutritionService.goals?.targetFat ?? 70 }
+    private var targetProtein: Double { nutritionService.goals?.targetMacros?.protein ?? 120 }
+    private var targetCarbs: Double { nutritionService.goals?.targetMacros?.carbs ?? 250 }
+    private var targetFat: Double { nutritionService.goals?.targetMacros?.fat ?? 70 }
     
     private func generateSampleData(from startDate: Date, to endDate: Date) -> [CalorieDataPoint] {
         var data: [CalorieDataPoint] = []
@@ -410,13 +410,13 @@ struct MealTrackingCard: View {
                     .foregroundColor(themeProvider.theme.textPrimary)
                 
                 HStack(spacing: 16) {
-                    MacroIndicator(label: "P", value: meal.macros.protein, color: .red)
-                    MacroIndicator(label: "C", value: meal.macros.carbs, color: .orange)
-                    MacroIndicator(label: "F", value: meal.macros.fat, color: .green)
+                    MacroIndicator(label: "P", value: Double(meal.macros.protein), color: .red)
+                    MacroIndicator(label: "C", value: Double(meal.macros.carbs), color: .orange)
+                    MacroIndicator(label: "F", value: Double(meal.macros.fat), color: .green)
                     
                     Spacer()
                     
-                    Text(meal.timestamp?.formatted(date: .omitted, time: .shortened) ?? "")
+                    Text("Today")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(themeProvider.theme.textSecondary)
                 }

@@ -121,23 +121,40 @@ class DatabaseService: ObservableObject {
     
     private func authRequest(path: String, body: [String: Any]) async throws -> AuthSession {
         let url = authBaseURL.appendingPathComponent(path)
+        print("🔥 DEBUG: Auth request URL: \(url)")
+        print("🔥 DEBUG: Auth request body: \(body)")
+        
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(anonKey, forHTTPHeaderField: "apikey")
         req.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        
         let (data, response) = try await URLSession.shared.data(for: req)
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+        let responseText = String(data: data, encoding: .utf8) ?? ""
+        
+        print("🔥 DEBUG: Auth response status: \(statusCode)")
+        print("🔥 DEBUG: Auth response body: \(responseText)")
+        
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let text = String(data: data, encoding: .utf8) ?? ""
-            throw DatabaseError.authenticationFailed("Auth error (\(code)): \(text)")
+            throw DatabaseError.authenticationFailed("Auth error (\(statusCode)): \(responseText)")
         }
-        return try JSONDecoder().decode(AuthSession.self, from: data)
+        
+        let session = try JSONDecoder().decode(AuthSession.self, from: data)
+        print("🔥 DEBUG: Decoded session - access_token: \(session.access_token != nil), user: \(session.user != nil)")
+        return session
     }
     
     func authSignUp(email: String, password: String) async throws -> AuthSession {
-        try await authRequest(path: "signup", body: ["email": email, "password": password])
+        try await authRequest(path: "signup", body: [
+            "email": email, 
+            "password": password,
+            "options": [
+                "email_confirm": false
+            ]
+        ])
     }
     
     func authSignIn(email: String, password: String) async throws -> AuthSession {

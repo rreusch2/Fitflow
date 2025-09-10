@@ -36,7 +36,7 @@ struct TikTokStyleVideoFeed: View {
                                     .onAppear {
                                         updateCurrentVideoIndex(itemGeometry: itemGeometry, containerGeometry: geometry, index: index)
                                     }
-                                    .onChange(of: scrollOffset) { _ in
+                                    .onChange(of: scrollOffset) {
                                         updateCurrentVideoIndex(itemGeometry: itemGeometry, containerGeometry: geometry, index: index)
                                     }
                             }
@@ -46,8 +46,8 @@ struct TikTokStyleVideoFeed: View {
                 .background(
                     GeometryReader { scrollGeometry in
                         Color.clear
-                            .onChange(of: scrollGeometry.frame(in: .global).minY) { newOffset in
-                                scrollOffset = newOffset
+                            .onChange(of: scrollGeometry.frame(in: .global).minY) {
+                                scrollOffset = $0
                             }
                     }
                 )
@@ -287,8 +287,8 @@ struct VideoPlayerView: View {
                 .transition(.opacity)
             }
         }
-        .onChange(of: isCurrentVideo) { newValue in
-            if newValue {
+        .onChange(of: isCurrentVideo) {
+            if $0 {
                 player.play()
                 isPlaying = true
             } else {

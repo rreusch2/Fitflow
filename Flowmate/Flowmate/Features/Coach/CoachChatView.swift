@@ -27,7 +27,7 @@ struct CoachChatView: View {
                 if let memory = suggestedMemory {
                     MemorySavePrompt(isPresented: $showMemoryPrompt, suggestedMemory: memory) { savedMemory in
                         Task {
-                            await memoryService.saveMemory(savedMemory)
+                            _ = await memoryService.saveMemory(savedMemory)
                             // Show success feedback
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
                         }
@@ -75,7 +75,7 @@ struct CoachChatView: View {
                 }
                 .padding(.vertical)
             }
-            .onChange(of: messages.count) { _ in
+            .onChange(of: messages.count) {
                 if let last = messages.last { 
                     withAnimation { 
                         proxy.scrollTo(last.id, anchor: .bottom) 
@@ -171,7 +171,7 @@ struct CoachChatView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
-            .padding(.bottom, max(12, UIApplication.shared.keyWindow?.safeAreaInsets.bottom ?? 0))
+            .padding(.bottom, 12)
         }
         .background(
             .regularMaterial,

@@ -19,7 +19,9 @@ struct User: Codable, Identifiable {
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
-        case id, email, preferences, createdAt, updatedAt
+        case id, email, preferences
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
         case subscriptionTier = "subscription_tier"
         case healthProfile = "health_profile"
         case hasCompletedOnboarding = "has_completed_onboarding"

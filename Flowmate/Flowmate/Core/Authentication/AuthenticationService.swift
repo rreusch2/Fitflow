@@ -57,27 +57,43 @@ class AuthenticationService: ObservableObject {
     func signUp(email: String, password: String, fullName: String) async {
         guard !isLoading else { return }
         
+        print("🔥 DEBUG: Starting signup process for \(email)")
         isLoading = true
         errorMessage = nil
         
         do {
             // Validate input
             guard Config.isValidEmail(email) else {
+                print("🔥 DEBUG: Invalid email validation failed")
                 throw AuthenticationError.invalidEmail
             }
             
             guard Config.isValidPassword(password) else {
+                print("🔥 DEBUG: Invalid password validation failed")
                 throw AuthenticationError.weakPassword
             }
             
+            print("🔥 DEBUG: Calling databaseService.authSignUp...")
             // Supabase Auth Sign Up
             let session = try await databaseService.authSignUp(email: email, password: password)
-            if let token = session.access_token { saveAuthToken(token) }
-            if let refresh = session.refresh_token { saveRefreshToken(refresh) }
-            if let token = session.access_token { databaseService.setAuthToken(token) }
+            print("🔥 DEBUG: Got session response: \(session)")
+            
+            if let token = session.access_token { 
+                print("🔥 DEBUG: Saving access token: \(token)")
+                saveAuthToken(token) 
+            } else {
+                print("🔥 DEBUG: No access token in session to save")
+            }
+            if let refresh = session.refresh_token { 
+                saveRefreshToken(refresh) 
+            }
+            if let token = session.access_token { 
+                databaseService.setAuthToken(token) 
+            }
 
             // Some projects require email confirmation; proceed to create profile row if access token present
             if let authId = session.user?.id, let authUUID = UUID(uuidString: authId) {
+                print("🔥 DEBUG: Creating user profile for UUID: \(authUUID)")
                 // Create minimal users row if not exists
                 if try await databaseService.getUserById(authUUID) == nil {
                     let newUser = User(
@@ -90,17 +106,25 @@ class AuthenticationService: ObservableObject {
                         createdAt: Date(),
                         updatedAt: Date()
                     )
+                    print("🔥 DEBUG: About to create user in database...")
                     try await databaseService.createUser(newUser)
+                    print("🔥 DEBUG: User created successfully!")
                     self.currentUser = newUser
                 } else {
+                    print("🔥 DEBUG: User already exists, fetching...")
                     self.currentUser = try await databaseService.getUserById(authUUID)
                 }
+            } else {
+                print("🔥 DEBUG: No user ID in session response")
             }
+            
             self.isAuthenticated = self.currentUser != nil
+            print("🔥 DEBUG: Signup completed successfully! isAuthenticated: \(self.isAuthenticated)")
             
             HapticFeedback.success()
             
         } catch {
+            print("🔥 DEBUG: Signup failed with error: \(error)")
             self.errorMessage = handleAuthError(error)
             HapticFeedback.error()
         }

@@ -259,15 +259,34 @@ struct AuthenticationView: View {
     }
     
     private func submit() async {
+        print("🔥 DEBUG: Submit button pressed!")
+        print("🔥 DEBUG: isSignUp = \(isSignUp)")
+        print("🔥 DEBUG: email = '\(email)'")
+        print("🔥 DEBUG: password = '\(password)'")
+        print("🔥 DEBUG: fullName = '\(fullName)'")
+        
         if isSignUp {
+            print("🔥 DEBUG: Validating signup form...")
             formErrors = authService.validateSignUpForm(email: email, password: password, confirmPassword: password, fullName: fullName)
-            guard formErrors.isEmpty else { return }
+            print("🔥 DEBUG: Form errors: \(formErrors)")
+            guard formErrors.isEmpty else { 
+                print("🔥 DEBUG: Form validation failed, stopping here")
+                return 
+            }
+            print("🔥 DEBUG: Form validation passed, calling signUp...")
             await authService.signUp(email: email, password: password, fullName: fullName)
         } else {
+            print("🔥 DEBUG: Validating signin form...")
             formErrors = authService.validateSignInForm(email: email, password: password)
-            guard formErrors.isEmpty else { return }
+            print("🔥 DEBUG: Form errors: \(formErrors)")
+            guard formErrors.isEmpty else { 
+                print("🔥 DEBUG: Form validation failed, stopping here")
+                return 
+            }
+            print("🔥 DEBUG: Form validation passed, calling signIn...")
             await authService.signIn(email: email, password: password)
         }
+        print("🔥 DEBUG: Submit function completed")
     }
 }
 
