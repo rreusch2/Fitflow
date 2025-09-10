@@ -1,6 +1,7 @@
 import { OpenAI } from 'openai';
 import { config } from '../config';
 import { randomUUID } from 'crypto';
+import { buildPersonalizationContext } from './personalization';
 
 export class AIService {
   private openai?: OpenAI;
@@ -184,6 +185,12 @@ export class AIService {
   }
 
   private buildWorkoutPrompt(params: any): string {
+    const pctx = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+      healthProfile: params.healthProfile,
+    });
+
     return `You are a world-class fitness trainer. Generate a comprehensive workout plan as STRICT JSON only.
 
 REQUIRED JSON STRUCTURE:
@@ -211,10 +218,19 @@ User Context:
 - Duration: ${params.overrides.estimated_duration || 45} minutes
 - Preferences: ${JSON.stringify(params.preferences)}
 
+Personalization Context:
+${pctx}
+
 Generate 6-8 exercises with proper progression. Use Markdown formatting for instructions.`;
   }
 
   private buildMealPrompt(params: any): string {
+    const pctx = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+      healthProfile: params.healthProfile,
+    });
+
     return `You are a certified nutritionist. Generate a comprehensive meal plan as STRICT JSON only.
 
 REQUIRED JSON STRUCTURE:
@@ -244,26 +260,48 @@ User Context:
 - Preferences: ${JSON.stringify(params.preferences)}
 - Goals: ${JSON.stringify(params.overrides.goals || ['maintain_weight'])}
 
+Personalization Context:
+${pctx}
+
 Generate 4-6 meals with balanced macronutrient distribution. Use Markdown formatting.`;
   }
 
   private buildChatPrompt(params: any): string {
+    const pctx = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+    });
+
     return `You are a fitness coach. Respond helpfully to the user's message.
     Return a strict JSON object with the shape: { "content": string } and nothing else.
     Message: "${params.message}"
-    User preferences: ${JSON.stringify(params.preferences)}`;
+    User preferences: ${JSON.stringify(params.preferences)}
+    Personalization Context:\n${pctx}`;
   }
 
   private buildFeedPrompt(params: any): string {
+    const pctx = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+    });
+
     return `Generate 3 motivational feed items as JSON array with items containing kind, title, text, topic_tags.
     Date: ${params.date.toISOString()}
-    User preferences: ${JSON.stringify(params.preferences)}`;
+    User preferences: ${JSON.stringify(params.preferences)}
+    Personalization Context:\n${pctx}`;
   }
 
   private buildProgressPrompt(params: any): string {
+    const pctx = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+      goals: params.goals,
+    } as any);
+
     return `Analyze progress data and provide JSON with trends array, summary string, and recommendations array.
     Entries: ${JSON.stringify(params.entries.slice(0, 10))}
-    Goals: ${JSON.stringify(params.goals)}`;
+    Goals: ${JSON.stringify(params.goals)}
+    Personalization Context:\n${pctx}`;
   }
 
   private getFallbackResponse(type: string): any {

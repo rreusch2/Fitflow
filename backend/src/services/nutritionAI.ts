@@ -1,5 +1,6 @@
 import { v4 } from 'uuid';
 import { config } from '../config';
+import { buildPersonalizationContext } from './personalization';
 
 interface UserContext {
   userId: string;
@@ -89,6 +90,12 @@ export class NutritionAIService {
 
   private buildDailySuggestionsPrompt(params: DailySuggestionsParams): string {
     const { nutritionGoals, preferences, healthProfile } = params;
+    const pctx = buildPersonalizationContext({
+      motivations: (preferences as any)?.motivation, // allow motivation to be nested under preferences
+      preferences,
+      nutritionGoals,
+      healthProfile,
+    });
     
     return `As a registered dietitian, create 4 personalized meal suggestions (breakfast, lunch, dinner, snack) for today.
 
@@ -137,11 +144,19 @@ Return JSON format:
       "tags": ["high_protein", "quick"]
     }
   ]
-}`;
+}
+
+Personalization Context:
+${pctx}`;
   }
 
   private buildWeeklyMealPlanPrompt(params: WeeklyMealPlanParams): string {
     const { nutritionGoals, preferences } = params;
+    const pctx = buildPersonalizationContext({
+      motivations: (preferences as any)?.motivation,
+      preferences,
+      nutritionGoals,
+    });
     
     return `Create a comprehensive 7-day meal plan with shopping list and prep notes.
 
@@ -160,11 +175,18 @@ Return comprehensive meal plan with:
 - Cost estimates where possible
 - Nutritional balance across the week
 
-Format as detailed JSON with all meal information, shopping items, and prep instructions.`;
+Format as detailed JSON with all meal information, shopping items, and prep instructions.
+
+Personalization Context:
+${pctx}`;
   }
 
   private buildDietAnalysisPrompt(params: DietAnalysisParams): string {
     const { mealLogs, nutritionGoals, days } = params;
+    const pctx = buildPersonalizationContext({
+      motivations: undefined, // route may not pass motivation here; optional
+      nutritionGoals,
+    });
     
     const totalCalories = mealLogs.reduce((sum, log) => sum + (log.totals?.calories || 0), 0);
     const avgCalories = totalCalories / Math.max(days, 1);
@@ -195,11 +217,19 @@ Provide analysis with:
 4. Prioritized recommendations for improvement
 5. Positive reinforcement for good habits
 
-Return structured JSON with clear, actionable insights.`;
+Return structured JSON with clear, actionable insights.
+
+Personalization Context:
+${pctx}`;
   }
 
   private buildPersonalizedTipsPrompt(params: PersonalizedTipsParams): string {
     const { recentMealLogs, nutritionGoals, preferences } = params;
+    const pctx = buildPersonalizationContext({
+      motivations: (preferences as any)?.motivation,
+      preferences,
+      nutritionGoals,
+    });
     
     return `Generate 3-4 personalized nutrition tips for this user based on their recent eating patterns.
 
@@ -219,7 +249,10 @@ Create tips that are:
 - Encouraging and positive
 - Varied in type (nutritional, behavioral, timing)
 
-Return JSON array of tips with type, title, description, icon, priority, and actionable flag.`;
+Return JSON array of tips with type, title, description, icon, priority, and actionable flag.
+
+Personalization Context:
+${pctx}`;
   }
 
   private async callGrokAPI(prompt: string, options: { maxTokens: number; temperature: number }) {

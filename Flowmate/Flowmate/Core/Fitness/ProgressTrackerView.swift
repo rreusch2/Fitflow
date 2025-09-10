@@ -12,7 +12,7 @@ struct ProgressTrackerView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var progressService = FitnessProgressService.shared
     @State private var selectedTimeframe: TimeFrame = .week
-    @State private var showAddDemoData = false
+    
     
     var body: some View {
         NavigationStack {
@@ -46,15 +46,7 @@ struct ProgressTrackerView: View {
                     .foregroundColor(themeProvider.theme.accent)
                 }
                 
-                ToolbarItem(placement: .topBarTrailing) {
-                    if progressService.workoutHistory.isEmpty {
-                        Button("Add Demo Data") {
-                            progressService.addDemoData()
-                        }
-                        .foregroundColor(themeProvider.theme.accent)
-                        .font(.caption)
-                    }
-                }
+                // Removed demo data injection; real data is persisted to Supabase
             }
         }
     }
@@ -199,12 +191,12 @@ struct ProgressTrackerView: View {
                 )
                 SummaryRow(
                     icon: "flame.fill", 
-                    title: "Calories Burned", 
+                    title: "Estimated Calories", 
                     value: "\(progressService.getTotalCaloriesBurned(for: selectedTimeframe))"
                 )
                 SummaryRow(
                     icon: "heart.fill", 
-                    title: "Avg Heart Rate", 
+                    title: "Est. Avg Heart Rate", 
                     value: progressService.getAverageHeartRate(for: selectedTimeframe) > 0 ? "\(progressService.getAverageHeartRate(for: selectedTimeframe)) bpm" : "N/A"
                 )
             }
@@ -358,7 +350,4 @@ struct SummaryRow: View {
 #Preview {
     ProgressTrackerView()
         .environmentObject(ThemeProvider())
-        .onAppear {
-            FitnessProgressService.shared.addDemoData()
-        }
 }

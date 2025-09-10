@@ -14,6 +14,7 @@ struct AIWorkoutPlanView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var completedExercises: Set<String> = []
     @State private var showShareSheet = false
+    @State private var isLogging = false
     
     var body: some View {
         NavigationStack {
@@ -55,6 +56,21 @@ struct AIWorkoutPlanView: View {
                         Image(systemName: "square.and.arrow.up")
                             .foregroundColor(themeProvider.theme.accent)
                     }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await logCompleted() }
+                    } label: {
+                        if isLogging {
+                            ProgressView().tint(themeProvider.theme.accent)
+                        } else {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundColor(themeProvider.theme.accent)
+                        }
+                    }
+                    .disabled(isLogging)
+                    .accessibilityLabel("Log Completed")
                 }
             }
         }
@@ -252,6 +268,48 @@ struct AIWorkoutPlanView: View {
         } else {
             completedExercises.insert(exerciseId)
         }
+    }
+    
+    // MARK: - Logging
+    private func logCompleted() async {
+        guard !isLogging else { return }
+        isLogging = true
+        defer { isLogging = false }
+        
+        // Map exercises
+        let completed: [CompletedExercise] = workout.exercises.map { ex in
+            let repsInt = firstInt(in: ex.reps ?? "") ?? 10
+            let setsInt = ex.sets ?? 3
+            let rest = TimeInterval((ex.rest_seconds ?? 90))
+            return CompletedExercise(
+                name: ex.name,
+                sets: setsInt,
+                reps: repsInt,
+                weight: nil,
+                restTime: rest,
+                completed: true,
+                notes: ex.instructions.isEmpty ? nil : ex.instructions
+            )
+        }
+        
+        let groups: [MuscleGroup] = workout.target_muscle_groups.compactMap { MuscleGroup(rawValue: $0) }
+        let duration = TimeInterval((workout.estimated_duration ?? 45) * 60)
+        
+        FitnessProgressService.shared.completeWorkout(
+            title: workout.title,
+            duration: duration,
+            exercises: completed,
+            muscleGroups: groups
+        )
+        HapticFeedback.success()
+        dismiss()
+    }
+    
+    private func firstInt(in text: String) -> Int? {
+        if let range = text.range(of: "\\d+", options: .regularExpression) {
+            return Int(text[range])
+        }
+        return nil
     }
     
     private func muscleGroupIcon(_ group: String) -> String {

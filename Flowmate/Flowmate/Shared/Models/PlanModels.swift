@@ -125,7 +125,10 @@ enum MuscleGroup: String, Codable, CaseIterable {
         case .chest: return "figure.strengthtraining.traditional"
         case .back: return "figure.strengthtraining.traditional"
         case .shoulders: return "figure.strengthtraining.traditional"
-        case .biceps, .triceps, .forearms: return "arm.flex"
+        // Use reliable, widely available symbols for arm groups
+        case .biceps: return "dumbbell.fill"
+        case .triceps: return "dumbbell.fill"
+        case .forearms: return "dumbbell.fill"
         case .abs, .obliques: return "figure.core.training"
         case .lowerBack: return "figure.strengthtraining.traditional"
         case .glutes, .quadriceps, .hamstrings, .calves: return "figure.strengthtraining.traditional"

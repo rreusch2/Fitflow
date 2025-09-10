@@ -22,6 +22,7 @@ struct EnhancedFitnessView: View {
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
     @State private var showLogWorkout = false
+    @State private var showWorkoutHistory = false
     @State private var showProgressTracker = false
     @State private var showNutritionInsights = false
     @State private var showFitnessSettings = false
@@ -94,10 +95,7 @@ struct EnhancedFitnessView: View {
                 AIWorkoutPlanView(workout: workout)
                     .environmentObject(themeProvider)
             }
-            .sheet(isPresented: $showLogWorkout) {
-                LogWorkoutSheet()
-                    .environmentObject(themeProvider)
-            }
+            // Removed obsolete LogWorkoutSheet; using LogWorkoutView below
             .sheet(isPresented: $showProgressTracker) {
                 ProgressTrackerView()
                     .environmentObject(themeProvider)
@@ -113,6 +111,14 @@ struct EnhancedFitnessView: View {
             }
             .sheet(isPresented: $showWorkoutLibrary) {
                 MyAIWorkoutsView()
+                    .environmentObject(themeProvider)
+            }
+            .sheet(isPresented: $showLogWorkout) {
+                LogWorkoutView()
+                    .environmentObject(themeProvider)
+            }
+            .sheet(isPresented: $showWorkoutHistory) {
+                WorkoutHistoryView()
                     .environmentObject(themeProvider)
             }
             .alert("Workout Generation Failed", isPresented: $showErrorAlert) {
@@ -168,6 +174,7 @@ struct EnhancedFitnessView: View {
                 gradient: [Color.orange, Color.red],
                 subtitle: "Keep pushing!"
             )
+            .frame(height: 120)
             
             EnhancedStatsCard(
                 title: "Weekly Goal",
@@ -176,6 +183,7 @@ struct EnhancedFitnessView: View {
                 gradient: [Color.blue, Color.purple],
                 subtitle: "On track"
             )
+            .frame(height: 120)
             
             EnhancedStatsCard(
                 title: "Avg Duration",
@@ -184,6 +192,7 @@ struct EnhancedFitnessView: View {
                 gradient: [Color.green, Color.teal],
                 subtitle: "Perfect pace"
             )
+            .frame(height: 120)
             
             EnhancedStatsCard(
                 title: "Activities",
@@ -192,6 +201,7 @@ struct EnhancedFitnessView: View {
                 gradient: [Color.pink, Color.purple],
                 subtitle: "Variety is key"
             )
+            .frame(height: 120)
         }
         .padding(.horizontal, 20)
     }
@@ -338,6 +348,22 @@ struct EnhancedFitnessView: View {
                 .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
             .disabled(selectedMuscleGroups.isEmpty || workoutService.isGeneratingWorkout)
+
+            // Footnote: Auto-save hint with quick access
+            HStack(spacing: 6) {
+                Image(systemName: "tray.full.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(themeProvider.theme.accent)
+                Text("Auto-saved to")
+                    .font(.footnote)
+                    .foregroundColor(themeProvider.theme.textSecondary)
+                Button("My AI Workouts") {
+                    showWorkoutLibrary = true
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(themeProvider.theme.accent)
+            }
+            .padding(.top, 4)
         }
         .padding(20)
         .background(
@@ -368,6 +394,15 @@ struct EnhancedFitnessView: View {
                         showWorkoutLibrary = true
                     }
                     
+                    QuickActionCard(
+                        title: "Workout History",
+                        subtitle: "Completed sessions",
+                        icon: "list.bullet.rectangle.portrait.fill",
+                        gradient: [Color.indigo, Color.blue]
+                    ) {
+                        showWorkoutHistory = true
+                    }
+
                     QuickActionCard(
                         title: "Progress Tracker",
                         subtitle: "View your journey",

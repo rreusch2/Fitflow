@@ -18,12 +18,13 @@ export async function aiRoutes(server: FastifyInstance) {
     const overrides = request.body as any;
 
     try {
-      // Get user preferences
-      const { data: preferences } = await server.supabase
+      // Get user preferences (JSONB bucket) and extract
+      const { data: prefRow } = await server.supabase
         .from('user_preferences')
-        .select('fitness, nutrition, motivation')
+        .select('preferences')
         .eq('user_id', userId)
         .single();
+      const preferences = prefRow?.preferences || {};
 
       // Get health profile
       const { data: healthProfile } = await server.supabase
@@ -130,12 +131,13 @@ export async function aiRoutes(server: FastifyInstance) {
     const overrides = request.body;
 
     try {
-      // Get user preferences
-      const { data: preferences } = await server.supabase
+      // Get user preferences (JSONB bucket) and extract
+      const { data: prefRow } = await server.supabase
         .from('user_preferences')
-        .select('fitness, nutrition, motivation')
+        .select('preferences')
         .eq('user_id', userId)
         .single();
+      const preferences = prefRow?.preferences || {};
 
       // Get health profile
       const { data: healthProfile } = await server.supabase
@@ -189,11 +191,12 @@ export async function aiRoutes(server: FastifyInstance) {
 
     try {
       // Get user preferences and health profile
-      const { data: preferences } = await server.supabase
+      const { data: prefRow } = await server.supabase
         .from('user_preferences')
-        .select('nutrition')
+        .select('preferences')
         .eq('user_id', userId)
         .single();
+      const preferences = prefRow?.preferences || {};
 
       const { data: nutritionGoals } = await server.supabase
         .from('nutrition_goals')
@@ -211,7 +214,7 @@ export async function aiRoutes(server: FastifyInstance) {
       const suggestions = await nutritionAI.generateDailySuggestions({
         userId,
         date: new Date(date),
-        preferences: preferences?.nutrition || {},
+        preferences: { ...(preferences?.nutrition || {}), motivation: preferences?.motivation },
         nutritionGoals: nutritionGoals || {},
         healthProfile: healthProfile || {}
       });
@@ -242,11 +245,12 @@ export async function aiRoutes(server: FastifyInstance) {
 
     try {
       // Get user data
-      const { data: userPrefs } = await server.supabase
+      const { data: prefRow } = await server.supabase
         .from('user_preferences')
-        .select('nutrition')
+        .select('preferences')
         .eq('user_id', userId)
         .single();
+      const userPrefs = prefRow?.preferences || {};
 
       const { data: nutritionGoals } = await server.supabase
         .from('nutrition_goals')
@@ -263,7 +267,7 @@ export async function aiRoutes(server: FastifyInstance) {
       // Generate weekly meal plan with AI
       const mealPlan = await nutritionAI.generateWeeklyMealPlan({
         userId,
-        preferences: { ...userPrefs?.nutrition, ...preferences },
+        preferences: { ...(userPrefs?.nutrition || {}), ...(preferences || {}), motivation: userPrefs?.motivation },
         nutritionGoals: nutritionGoals || {},
         healthProfile: healthProfile || {},
         startDate: new Date(startDate)
@@ -327,12 +331,21 @@ export async function aiRoutes(server: FastifyInstance) {
         .single();
 
       // Generate analysis with AI
+      // Get preferences for personalization
+      const { data: prefRow } = await server.supabase
+        .from('user_preferences')
+        .select('preferences')
+        .eq('user_id', userId)
+        .single();
+      const preferences = prefRow?.preferences || {};
+
       const analysis = await nutritionAI.analyzeDiet({
         userId,
         mealLogs: mealLogs || [],
         nutritionGoals: nutritionGoals || {},
         healthProfile: healthProfile || {},
-        days
+        days,
+        preferences: { ...(preferences?.nutrition || {}), motivation: preferences?.motivation }
       });
 
       return analysis;
@@ -362,18 +375,19 @@ export async function aiRoutes(server: FastifyInstance) {
         .eq('user_id', userId)
         .single();
 
-      const { data: preferences } = await server.supabase
+      const { data: prefRow } = await server.supabase
         .from('user_preferences')
-        .select('nutrition')
+        .select('preferences')
         .eq('user_id', userId)
         .single();
+      const preferences = prefRow?.preferences || {};
 
       // Generate personalized tips with AI
       const tips = await nutritionAI.generatePersonalizedTips({
         userId,
         recentMealLogs: recentLogs || [],
         nutritionGoals: nutritionGoals || {},
-        preferences: preferences?.nutrition || {}
+        preferences: { ...(preferences?.nutrition || {}), motivation: preferences?.motivation }
       });
 
       return { tips };
