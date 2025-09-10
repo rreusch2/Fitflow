@@ -155,7 +155,7 @@ export class AIService {
       // Try XAI first if available
       if (this.xaiClient) {
         const response = await this.xaiClient.chat.completions.create({
-          model: 'grok-3',
+          model: 'grok-3-latest',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: config.AI_MAX_TOKENS,
           temperature: 0.7,

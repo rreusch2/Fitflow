@@ -42,7 +42,7 @@ struct Config {
         // Grok API Configuration
         static let grokAPIKey = getKey("GROK_API_KEY")
         static let grokBaseURL = "https://api.x.ai/v1"
-        static let grokModel = "grok-beta"
+        static let grokModel = "grok-3-latest"
         
         // OpenAI Configuration (Fallback)
         static let openAIAPIKey = getKey("OPENAI_API_KEY")

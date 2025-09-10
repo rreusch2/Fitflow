@@ -230,7 +230,7 @@ Return JSON array of tips with type, title, description, icon, priority, and act
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'grok-beta',
+        model: 'grok-3-latest',
         messages: [
           {
             role: 'system',
