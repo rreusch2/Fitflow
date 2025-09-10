@@ -148,24 +148,18 @@ struct WorkoutPlanResponse: Codable, Identifiable {
 }
 
 struct ExerciseResponse: Codable, Identifiable {
-    let id: String
     let name: String
-    let description: String
-    let muscle_groups: [String]
-    let equipment: String?
     let sets: Int?
     let reps: String?
-    let weight: String?
-    let rest_time: Int?
-    let instructions: [String]
-    let tips: [String]
-    let modifications: [ExerciseModificationResponse]
-    let video_url: String?
-    let image_url: String?
+    let rest_seconds: Int?
+    let instructions: String
+    let primary_muscle: String
+    let equipment: String
     
     // Computed properties for display
+    var id: String { name } // Use name as ID since backend doesn't provide UUID
     var displayName: String { name }
-    var displayDescription: String { description }
+    var displayDescription: String { instructions }
     var setsRepsText: String {
         guard let sets = sets else { return "As prescribed" }
         if let reps = reps {
@@ -173,15 +167,12 @@ struct ExerciseResponse: Codable, Identifiable {
         }
         return "\(sets) sets"
     }
-    var restText: String {
-        guard let rest = rest_time else { return "1-2 min" }
-        if rest >= 60 {
-            return "\(rest / 60) min"
-        }
-        return "\(rest) sec"
+    var restTimeText: String {
+        guard let restSeconds = rest_seconds else { return "" }
+        return "Rest: \(restSeconds)s"
     }
     var equipmentText: String {
-        equipment?.replacingOccurrences(of: "_", with: " ").capitalized ?? "Bodyweight"
+        equipment.replacingOccurrences(of: "_", with: " ").capitalized
     }
 }
 

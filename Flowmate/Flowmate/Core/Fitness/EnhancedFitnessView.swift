@@ -25,6 +25,7 @@ struct EnhancedFitnessView: View {
     @State private var showProgressTracker = false
     @State private var showNutritionInsights = false
     @State private var showFitnessSettings = false
+    @State private var showWorkoutLibrary = false
     
     private var fitnessPrefs: FitnessPreferences? {
         authService.currentUser?.preferences?.fitness
@@ -89,11 +90,9 @@ struct EnhancedFitnessView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showWorkoutPlan) {
-                if let workout = generatedWorkout {
-                    AIWorkoutPlanView(workout: workout)
-                        .environmentObject(themeProvider)
-                }
+            .sheet(item: $generatedWorkout) { workout in
+                AIWorkoutPlanView(workout: workout)
+                    .environmentObject(themeProvider)
             }
             .sheet(isPresented: $showLogWorkout) {
                 LogWorkoutSheet()
@@ -111,6 +110,10 @@ struct EnhancedFitnessView: View {
                 FitnessSettingsView()
                     .environmentObject(themeProvider)
                     .environmentObject(authService)
+            }
+            .sheet(isPresented: $showWorkoutLibrary) {
+                MyAIWorkoutsView()
+                    .environmentObject(themeProvider)
             }
             .alert("Workout Generation Failed", isPresented: $showErrorAlert) {
                 Button("OK") { }
@@ -357,6 +360,15 @@ struct EnhancedFitnessView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     QuickActionCard(
+                        title: "My AI Workouts",
+                        subtitle: "Library",
+                        icon: "tray.full.fill",
+                        gradient: [Color.purple, Color.indigo]
+                    ) {
+                        showWorkoutLibrary = true
+                    }
+                    
+                    QuickActionCard(
                         title: "Progress Tracker",
                         subtitle: "View your journey",
                         icon: "chart.line.uptrend.xyaxis",
@@ -500,7 +512,6 @@ struct EnhancedFitnessView: View {
             
             await MainActor.run {
                 generatedWorkout = workout
-                showWorkoutPlan = true
                 HapticFeedback.success()
             }
             

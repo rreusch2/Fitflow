@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct AIWorkoutPlanView: View {
     let workout: WorkoutPlanResponse
@@ -24,7 +25,7 @@ struct AIWorkoutPlanView: View {
                     // Workout Overview
                     workoutOverview
                     
-                    // AI Notes Section
+                    // AI Notes (only if available)
                     if !workout.aiNotes.isEmpty {
                         aiNotesSection
                     }
@@ -32,8 +33,7 @@ struct AIWorkoutPlanView: View {
                     // Exercises
                     exercisesList
                     
-                    // Action Buttons
-                    actionButtons
+                    // Actions are available via the toolbar (Share/Close)
                 }
                 .padding(.bottom, 100)
             }
@@ -60,6 +60,9 @@ struct AIWorkoutPlanView: View {
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [generateWorkoutText()])
+        }
+        .onAppear {
+            print("🔥 DEBUG: AIWorkoutPlanView appeared with workout id: \(workout.id), title: \(workout.title)")
         }
     }
     
@@ -98,7 +101,7 @@ struct AIWorkoutPlanView: View {
                     .foregroundColor(themeProvider.theme.textPrimary)
                     .multilineTextAlignment(.center)
                 
-                Text(workout.displayDescription)
+                Text(markdown(workout.displayDescription))
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(themeProvider.theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -240,57 +243,7 @@ struct AIWorkoutPlanView: View {
         }
     }
     
-    // MARK: - Action Buttons
-    private var actionButtons: some View {
-        VStack(spacing: 12) {
-            // Start/Complete Workout Button
-            Button {
-                // Start workout action - could integrate with Apple Health
-            } label: {
-                HStack {
-                    Image(systemName: completedExercises.count == workout.exercises.count ? "checkmark.circle.fill" : "play.fill")
-                    Text(completedExercises.count == workout.exercises.count ? "Workout Complete!" : "Start Workout")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: completedExercises.count == workout.exercises.count ? 
-                            [Color.green, Color.green.opacity(0.8)] :
-                            [themeProvider.theme.accent, themeProvider.theme.accent.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: themeProvider.theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
-            }
-            
-            // Save Workout Button
-            Button {
-                // Save workout to user's collection
-                HapticFeedback.success()
-                dismiss()
-            } label: {
-                HStack {
-                    Image(systemName: "bookmark.fill")
-                    Text("Save to My Workouts")
-                        .font(.system(size: 16, weight: .medium))
-                }
-                .foregroundColor(themeProvider.theme.accent)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(themeProvider.theme.accent, lineWidth: 2)
-                        .fill(themeProvider.theme.accent.opacity(0.05))
-                )
-            }
-        }
-        .padding(.horizontal, 20)
-    }
+    // No extra action buttons; plans are automatically saved on generation.
     
     // MARK: - Helper Functions
     private func toggleExerciseCompletion(_ exerciseId: String) {
@@ -332,28 +285,28 @@ struct AIWorkoutPlanView: View {
         
         for (index, exercise) in workout.exercises.enumerated() {
             text += "\n\(index + 1). \(exercise.displayName)\n"
-            text += "   \(exercise.setsRepsText) | Rest: \(exercise.restText)\n"
+            text += "   \(exercise.setsRepsText) | \(exercise.restTimeText)\n"
             text += "   Equipment: \(exercise.equipmentText)\n"
-            if !exercise.description.isEmpty {
-                text += "   📖 \(exercise.description)\n"
+            if !exercise.displayDescription.isEmpty {
+                text += "   📖 \(exercise.displayDescription)\n"
             }
             if !exercise.instructions.isEmpty {
                 text += "   📋 Instructions:\n"
-                for instruction in exercise.instructions {
-                    text += "      • \(instruction)\n"
-                }
-            }
-            if !exercise.tips.isEmpty {
-                text += "   💡 Tips:\n"
-                for tip in exercise.tips {
-                    text += "      • \(tip)\n"
-                }
+                text += "      \(exercise.instructions)\n"
             }
         }
         
         text += "\n\n✨ Generated by Grok AI via Fitflow"
         return text
     }
+}
+
+// MARK: - Markdown Helper
+func markdown(_ text: String) -> AttributedString {
+    if let attributed = try? AttributedString(markdown: text) {
+        return attributed
+    }
+    return AttributedString(text)
 }
 
 // MARK: - AI Exercise Card
@@ -367,169 +320,111 @@ struct AIExerciseCard: View {
     @State private var isExpanded = false
     
     var body: some View {
+        exerciseCard
+    }
+    
+    private var exerciseCard: some View {
         VStack(spacing: 0) {
-            // Main Exercise Card
-            HStack(spacing: 16) {
-                // Exercise Number/Checkmark
-                Button(action: onToggle) {
-                    ZStack {
-                        Circle()
-                            .fill(isCompleted ? Color.green : themeProvider.theme.accent.opacity(0.1))
-                            .frame(width: 36, height: 36)
-                        
-                        if isCompleted {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                        } else {
-                            Text("\(index)")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(themeProvider.theme.accent)
-                        }
-                    }
-                }
-                
-                // Exercise Details
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(exercise.displayName)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(themeProvider.theme.textPrimary)
-                            .strikethrough(isCompleted)
-                        
-                        Spacer()
-                        
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                isExpanded.toggle()
-                            }
-                        } label: {
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(themeProvider.theme.textSecondary)
-                        }
-                    }
-                    
-                    HStack(spacing: 16) {
-                        if let sets = exercise.sets {
-                            ExerciseDetail(label: "Sets", value: "\(sets)")
-                        }
-                        if let reps = exercise.reps {
-                            ExerciseDetail(label: "Reps", value: reps)
-                        }
-                        ExerciseDetail(label: "Rest", value: exercise.restText)
-                        ExerciseDetail(label: "Equipment", value: exercise.equipmentText)
-                    }
-                }
-            }
-            .padding(16)
-            
-            // Expandable Details
+            mainExerciseRow
             if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-                        .padding(.horizontal, 16)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        if !exercise.description.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Description")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.accent)
-                                Text(exercise.description)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(themeProvider.theme.textSecondary)
-                            }
-                        }
-                        
-                        if !exercise.instructions.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Instructions")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.accent)
-                                ForEach(Array(exercise.instructions.enumerated()), id: \.offset) { _, instruction in
-                                    HStack(alignment: .top, spacing: 6) {
-                                        Text("•")
-                                            .foregroundColor(themeProvider.theme.accent)
-                                        Text(instruction)
-                                            .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(themeProvider.theme.textSecondary)
-                                    }
-                                }
-                            }
-                        }
-                        
-                        if !exercise.tips.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Tips")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(themeProvider.theme.accent)
-                                ForEach(Array(exercise.tips.enumerated()), id: \.offset) { _, tip in
-                                    HStack(alignment: .top, spacing: 6) {
-                                        Text("💡")
-                                            .font(.system(size: 11))
-                                        Text(tip)
-                                            .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(themeProvider.theme.textSecondary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                expandedContent
+            }
+        }
+    }
+    
+    private var mainExerciseRow: some View {
+        HStack(spacing: 16) {
+            exerciseButton
+            exerciseDetails
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(themeProvider.theme.cardBackground)
+                .stroke(
+                    isCompleted ? Color.green.opacity(0.3) : Color.gray.opacity(0.2),
+                    lineWidth: 1
+                )
+        )
+        .opacity(isCompleted ? 0.7 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCompleted)
+    }
+    
+    private var exerciseButton: some View {
+        Button(action: onToggle) {
+            ZStack {
+                let fillColor = isCompleted ? Color.green : themeProvider.theme.accent.opacity(0.1)
+                Circle()
+                    .fill(fillColor)
+                    .frame(width: 36, height: 36)
+                
+                if isCompleted {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                } else {
+                    Text("\(index)")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(themeProvider.theme.accent)
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(themeProvider.theme.backgroundSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(
-                            isCompleted ? Color.green.opacity(0.3) : Color.gray.opacity(0.2),
-                            lineWidth: 1
-                        )
-                )
-                .opacity(isCompleted ? 0.7 : 1.0)
-        )
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCompleted)
+    }
+    
+    private var exerciseDetails: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(exercise.displayName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                    .strikethrough(isCompleted)
+                
+                Spacer()
+                
+                Button {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(themeProvider.theme.textSecondary)
+                }
+            }
+            
+            HStack(spacing: 16) {
+                if let sets = exercise.sets {
+                    ExerciseDetail(label: "Sets", value: "\(sets)")
+                }
+                if let reps = exercise.reps {
+                    ExerciseDetail(label: "Reps", value: reps)
+                }
+                if let restSeconds = exercise.rest_seconds {
+                    ExerciseDetail(label: "Rest", value: "\(restSeconds)s")
+                }
+            }
+        }
+    }
+    
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+                .padding(.horizontal, 16)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Instructions")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(themeProvider.theme.textPrimary)
+                
+                Text(markdown(exercise.instructions))
+                    .font(.system(size: 14))
+                    .foregroundColor(themeProvider.theme.textSecondary)
+                    .lineLimit(nil)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+        }
     }
 }
 
-#Preview {
-    AIWorkoutPlanView(
-        workout: WorkoutPlanResponse(
-            id: "1234",
-            user_id: "user123",
-            title: "AI Generated Push Day",
-            description: "A comprehensive upper body push workout targeting chest, shoulders, and triceps",
-            difficulty_level: "intermediate", 
-            estimated_duration: 45,
-            target_muscle_groups: ["chest", "shoulders", "triceps"],
-            equipment: ["barbell", "dumbbells"],
-            exercises: [
-                ExerciseResponse(
-                    id: "ex1",
-                    name: "Barbell Bench Press",
-                    description: "Compound movement for chest development",
-                    muscle_groups: ["chest", "triceps"],
-                    equipment: "barbell",
-                    sets: 4,
-                    reps: "8-10",
-                    weight: nil,
-                    rest_time: 120,
-                    instructions: ["Lie flat on bench", "Grip bar slightly wider than shoulders", "Lower bar to chest", "Press up explosively"],
-                    tips: ["Keep feet planted", "Maintain tight core", "Control the descent"],
-                    modifications: [],
-                    video_url: nil,
-                    image_url: nil
-                )
-            ],
-            ai_generated_notes: "Focus on controlled movement and progressive overload. Rest adequately between sets.",
-            created_at: "2025-01-13T12:00:00Z",
-            updated_at: "2025-01-13T12:00:00Z"
-        )
-    )
-    .environmentObject(ThemeProvider())
-}
+

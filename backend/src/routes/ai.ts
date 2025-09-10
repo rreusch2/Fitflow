@@ -73,6 +73,53 @@ export async function aiRoutes(server: FastifyInstance) {
     }
   });
 
+  // List user's AI workout plans
+  server.get('/workout-plans', async (request, reply) => {
+    const userId = (request.authUser as { id: string }).id;
+
+    try {
+      const { data, error } = await server.supabase
+        .from('workout_plans')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        server.log.error({ err: error }, 'Error fetching workout plans');
+        return reply.code(500).send({ error: 'Failed to fetch workout plans' });
+      }
+
+      return reply.send({ plans: data || [] });
+    } catch (error) {
+      server.log.error({ err: error }, 'Error fetching workout plans');
+      return reply.code(500).send({ error: 'Failed to fetch workout plans' });
+    }
+  });
+
+  // Delete a workout plan (only if it belongs to the user)
+  server.delete('/workout-plans/:id', async (request, reply) => {
+    const userId = (request.authUser as { id: string }).id;
+    const { id } = request.params as { id: string };
+
+    try {
+      const { error } = await server.supabase
+        .from('workout_plans')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) {
+        server.log.error({ err: error }, 'Error deleting workout plan');
+        return reply.code(500).send({ error: 'Failed to delete workout plan' });
+      }
+
+      return reply.code(204).send();
+    } catch (error) {
+      server.log.error({ err: error }, 'Error deleting workout plan');
+      return reply.code(500).send({ error: 'Failed to delete workout plan' });
+    }
+  });
+
   // Generate meal plan
   server.post('/meal-plan', {
     schema: {
