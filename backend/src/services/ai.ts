@@ -29,22 +29,29 @@ export class AIService {
     overrides: any;
   }) {
     const prompt = this.buildWorkoutPrompt(params);
+    const personalizationContext = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+      healthProfile: params.healthProfile,
+    });
     
-    const response = await this.callAI(prompt, 'workout-plan');
+    const aiResponse = await this.callAI(prompt, 'workout-plan');
     
     return {
       id: randomUUID(),
       user_id: params.userId,
-      title: response.title || 'Custom Workout Plan',
-      description: response.description || 'AI-generated workout plan',
-      difficulty_level: params.overrides.difficulty_level || 'intermediate',
+      title: aiResponse.title || 'Custom Workout Plan',
+      description: aiResponse.description || 'AI-generated workout plan',
+      difficulty_level: params.overrides.fitness_level || 'intermediate',
       estimated_duration: params.overrides.estimated_duration || 45,
       target_muscle_groups: params.overrides.target_muscle_groups || ['full_body'],
-      equipment: params.overrides.equipment || ['none'],
-      exercises: response.exercises || [],
-      ai_generated_notes: response.notes,
+      equipment: params.overrides.equipment || ['bodyweight'],
+      exercises: aiResponse.exercises || [],
+      ai_generated_notes: aiResponse.notes,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      aiResponse,
+      personalizationContext
     };
   }
 
@@ -55,22 +62,30 @@ export class AIService {
     overrides: any;
   }) {
     const prompt = this.buildMealPrompt(params);
+    const personalizationContext = buildPersonalizationContext({
+      motivations: params.preferences?.motivation,
+      preferences: params.preferences,
+      healthProfile: params.healthProfile,
+    });
     
-    const response = await this.callAI(prompt, 'meal-plan');
+    const aiResponse = await this.callAI(prompt, 'meal-plan');
     
     return {
       id: randomUUID(),
       user_id: params.userId,
-      title: response.title || 'Custom Meal Plan',
-      description: response.description || 'AI-generated meal plan',
+      title: aiResponse.title || 'Custom Meal Plan',
+      description: aiResponse.description || 'AI-generated meal plan',
       target_calories: params.overrides.target_calories || 2000,
-      macro_breakdown: response.macro_breakdown || { protein: 150, carbs: 200, fat: 65, fiber: 25 },
-      meals: response.meals || [],
-      shopping_list: response.shopping_list || [],
+      macro_breakdown: aiResponse.macro_breakdown || { protein: 150, carbs: 200, fat: 65, fiber: 25 },
+      meals: aiResponse.meals || [],
+      shopping_list: aiResponse.shopping_list || [],
       prep_time: params.overrides.prep_time || 60,
-      ai_generated_notes: response.notes,
+      ai_generated_notes: aiResponse.notes,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // Additional fields for logging
+      aiResponse,
+      personalizationContext
     };
   }
 

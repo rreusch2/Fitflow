@@ -114,13 +114,24 @@ class WorkoutSessionService: ObservableObject {
         
         guard let url = URL(string: "\(baseURL)/v1/fitness/workout-sessions") else { return false }
         
-        let payload = [
+        // Convert exercises to JSON-serializable format
+        let exercisesData = exercises.map { exercise -> [String: Any] in
+            var exerciseDict: [String: Any] = ["name": exercise.name]
+            if let sets = exercise.sets { exerciseDict["sets"] = sets }
+            if let reps = exercise.reps { exerciseDict["reps"] = reps }
+            if let weight = exercise.weight { exerciseDict["weight"] = weight }
+            if let notes = exercise.notes { exerciseDict["notes"] = notes }
+            return exerciseDict
+        }
+        
+        var payload: [String: Any] = [
             "workout_type": type,
-            "duration_minutes": duration as Any,
-            "exercises_completed": exercises,
-            "muscle_groups": muscleGroups,
-            "notes": notes as Any
-        ] as [String: Any]
+            "exercises_completed": exercisesData,
+            "muscle_groups": muscleGroups
+        ]
+        
+        if let duration = duration { payload["duration_minutes"] = duration }
+        if let notes = notes { payload["notes"] = notes }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -131,17 +142,25 @@ class WorkoutSessionService: ObservableObject {
         }
         
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
+            request.httpBody = jsonData
             let (_, response) = try await URLSession.shared.data(for: request)
             
-            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
-                HapticFeedback.success()
-                await fetchRecentSessions() // Refresh the list
-                return true
+            if let http = response as? HTTPURLResponse {
+                print("🔥 HTTP Status: \(http.statusCode)")
+                if (200...299).contains(http.statusCode) {
+                    HapticFeedback.success()
+                    await fetchRecentSessions() // Refresh the list
+                    return true
+                } else {
+                    print("🔥 Server error: \(http.statusCode)")
+                }
             }
             return false
         } catch {
-            print("Failed to log workout: \(error)")
+            print("🔥 Failed to log workout: \(error)")
+            print("🔥 Request URL: \(url)")
+            print("🔥 Payload: \(payload)")
             return false
         }
     }
@@ -179,13 +198,15 @@ class WorkoutSessionService: ObservableObject {
         
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
-            let response = try JSONDecoder().decode([String: Any].self, from: data) as? [String: Any]
-            // Parse weekly stats and current streak from response
-            if let stats = response?["weekly_stats"] as? [String: Any] {
-                self.weeklyStats = try? JSONSerialization.data(withJSONObject: stats).decoded() as WeeklyStats
-            }
-            if let streak = response?["current_streak"] as? Int {
-                self.currentStreak = streak
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                // Parse weekly stats and current streak from response
+                if let stats = json["weekly_stats"] as? [String: Any] {
+                    let statsData = try JSONSerialization.data(withJSONObject: stats)
+                    self.weeklyStats = try JSONDecoder().decode(WeeklyStats.self, from: statsData)
+                }
+                if let streak = json["current_streak"] as? Int {
+                    self.currentStreak = streak
+                }
             }
         } catch {
             print("Failed to fetch weekly stats: \(error)")

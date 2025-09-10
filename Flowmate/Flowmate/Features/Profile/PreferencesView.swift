@@ -372,7 +372,7 @@ struct PreferencesView: View {
         do {
             // This would fetch from BackendAPIClient.shared.getPreferences() in real implementation
             // For now, mock the response
-            await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             
             // Mock preferences data
             let mockPrefs: [String: Any] = [

@@ -421,6 +421,8 @@ private struct MotivationSlide: View {
             fitness: fitnessPrefs,
             nutrition: nutritionPrefs,
             motivation: motivationPrefs,
+            personalizationContext: $personalizationContext,
+            showPersonalizationDebug: $showPersonalizationDebug,
             onEditInterests: { step = indexOf(.interests) },
             onEditTheme: { step = indexOf(.theme) },
             onEditFitness: { step = indexOf(.fitness) },
@@ -1723,6 +1725,8 @@ private struct SummarySlide: View {
     let fitness: FitnessPreferences
     let nutrition: NutritionPreferences
     let motivation: MotivationPreferences
+    @Binding var personalizationContext: String
+    @Binding var showPersonalizationDebug: Bool
     let onEditInterests: () -> Void
     let onEditTheme: () -> Void
     let onEditFitness: () -> Void

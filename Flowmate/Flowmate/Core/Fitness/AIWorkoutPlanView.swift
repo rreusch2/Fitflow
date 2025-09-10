@@ -316,8 +316,8 @@ struct AIWorkoutPlanView: View {
     }
     
     private func logWorkoutCompletion() async {
-        let completedExercises = workout.exercises.compactMap { exercise -> WorkoutSessionService.CompletedExercise? in
-            guard completedExercises.contains(exercise.id) else { return nil }
+        let completedExerciseData = workout.exercises.compactMap { exercise -> WorkoutSessionService.CompletedExercise? in
+            guard self.completedExercises.contains(exercise.id) else { return nil }
             return WorkoutSessionService.CompletedExercise(
                 name: exercise.displayName,
                 sets: exercise.sets,
@@ -330,7 +330,7 @@ struct AIWorkoutPlanView: View {
         let success = await WorkoutSessionService.shared.logAIWorkoutCompletion(
             workoutPlan: workout,
             duration: workout.estimated_duration,
-            completedExercises: completedExercises,
+            completedExercises: completedExerciseData,
             notes: nil
         )
         
