@@ -17,8 +17,6 @@ class WorkoutSessionService: ObservableObject {
     @Published var weeklyStats: WeeklyStats?
     @Published var currentStreak: Int = 0
     
-    private let baseURL = "https://fitflow-production.up.railway.app"
-    
     private init() {}
     
     // MARK: - Models
@@ -112,8 +110,6 @@ class WorkoutSessionService: ObservableObject {
         isLogging = true
         defer { isLogging = false }
         
-        guard let url = URL(string: "\(baseURL)/v1/fitness/workout-sessions") else { return false }
-        
         // Convert exercises to JSON-serializable format
         let exercisesData = exercises.map { exercise -> [String: Any] in
             var exerciseDict: [String: Any] = ["name": exercise.name]
@@ -133,33 +129,19 @@ class WorkoutSessionService: ObservableObject {
         if let duration = duration { payload["duration_minutes"] = duration }
         if let notes = notes { payload["notes"] = notes }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        if let token = UserDefaults.standard.string(forKey: "auth_access_token") {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
-            request.httpBody = jsonData
-            let (_, response) = try await URLSession.shared.data(for: request)
-            
-            if let http = response as? HTTPURLResponse {
-                print("🔥 HTTP Status: \(http.statusCode)")
-                if (200...299).contains(http.statusCode) {
-                    HapticFeedback.success()
-                    await fetchRecentSessions() // Refresh the list
-                    return true
-                } else {
-                    print("🔥 Server error: \(http.statusCode)")
-                }
+            let (_, http) = try await BackendAPIClient.shared.sendJSON(path: "fitness/workout-sessions", method: "POST", json: payload)
+            print("🔥 HTTP Status: \(http.statusCode)")
+            if (200...299).contains(http.statusCode) {
+                HapticFeedback.success()
+                await fetchRecentSessions() // Refresh the list
+                return true
+            } else {
+                print("🔥 Server error: \(http.statusCode)")
+                return false
             }
-            return false
         } catch {
             print("🔥 Failed to log workout: \(error)")
-            print("🔥 Request URL: \(url)")
             print("🔥 Payload: \(payload)")
             return false
         }
@@ -167,17 +149,9 @@ class WorkoutSessionService: ObservableObject {
     
     /// Fetch recent workout sessions
     func fetchRecentSessions() async {
-        guard let url = URL(string: "\(baseURL)/v1/fitness/workout-sessions") else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        
-        if let token = UserDefaults.standard.string(forKey: "auth_access_token") {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, http) = try await BackendAPIClient.shared.get(path: "fitness/workout-sessions")
+            print("🔥 Fetch sessions HTTP: \(http.statusCode)")
             let response = try JSONDecoder().decode([String: [WorkoutSession]].self, from: data)
             self.sessions = response["sessions"] ?? []
         } catch {
@@ -187,17 +161,9 @@ class WorkoutSessionService: ObservableObject {
     
     /// Fetch progress statistics
     func fetchWeeklyStats() async {
-        guard let url = URL(string: "\(baseURL)/v1/fitness/weekly-stats") else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        
-        if let token = UserDefaults.standard.string(forKey: "auth_access_token") {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, http) = try await BackendAPIClient.shared.get(path: "fitness/weekly-stats")
+            print("🔥 Weekly stats HTTP: \(http.statusCode)")
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 // Parse weekly stats and current streak from response
                 if let stats = json["weekly_stats"] as? [String: Any] {

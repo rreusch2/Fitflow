@@ -109,6 +109,13 @@ struct LogWorkoutSheet: View {
     private func save() {
         isSaving = true
         error = nil
+        // Require a valid Supabase access token for protected backend routes
+        let token = UserDefaults.standard.string(forKey: "auth_access_token")
+        if token == nil || token?.isEmpty == true {
+            isSaving = false
+            error = "Please sign in to save workouts."
+            return
+        }
         
         let completedExercises: [WorkoutSessionService.CompletedExercise] = exercises.compactMap { ex in
             guard !ex.name.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }

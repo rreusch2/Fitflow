@@ -41,15 +41,27 @@ export const authPlugin = fp(async (fastify) => {
       }
 
       // Fetch user details from database
-      const { data: userData, error: userError } = await fastify.supabase
+      let { data: userData, error: userError } = await fastify.supabase
         .from('users')
         .select('id, email, subscription_tier')
         .eq('id', user.id)
         .single();
 
+      // Auto-provision a minimal user row if missing
       if (userError || !userData) {
-        reply.code(401).send({ error: 'User not found' });
-        return;
+        fastify.log.warn({ userId: user.id, err: userError }, 'User not found in users table, creating...');
+        const { data: inserted, error: insertError } = await fastify.supabase
+          .from('users')
+          .insert({ id: user.id, email: user.email, subscription_tier: 'free' })
+          .select('id, email, subscription_tier')
+          .single();
+
+        if (insertError) {
+          fastify.log.error({ err: insertError }, 'Failed to auto-provision user');
+          reply.code(401).send({ error: 'User not found and could not be created' });
+          return;
+        }
+        userData = inserted;
       }
 
       request.authUser = userData;

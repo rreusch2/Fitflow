@@ -24,6 +24,22 @@ struct BackendAPIClient {
         return req
     }
 
+    // MARK: - Generic authorized requests
+    func get(path: String) async throws -> (Data, HTTPURLResponse) {
+        let req = try authorizedRequest(path: path, method: "GET", body: nil)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        return (data, http)
+    }
+
+    func sendJSON(path: String, method: String = "POST", json: [String: Any]) async throws -> (Data, HTTPURLResponse) {
+        let body = try JSONSerialization.data(withJSONObject: json, options: [])
+        let req = try authorizedRequest(path: path, method: method, body: body)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        return (data, http)
+    }
+
     // MARK: - Preferences
     // Update preferences JSONB bucket. You can pass any partial preferences object.
     func updatePreferences(_ preferences: [String: Any]) async throws -> [String: Any] {
