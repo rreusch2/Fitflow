@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { UserPreferencesSchema, UpdateUserPreferencesSchema } from '../schemas/user';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { buildPersonalizationContext } from '../services/personalization';
 
 export async function userRoutes(server: FastifyInstance) {
   // Get current user profile
@@ -51,13 +52,46 @@ export async function userRoutes(server: FastifyInstance) {
     };
   });
 
-  // Get user preferences
+  // Debug: Get computed personalization context
+  server.get('/personalization-context', async (request, reply) => {
+    const userId = (request.authUser as { id: string }).id;
+
+    const { data: prefRow } = await server.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .single();
+
+    const { data: nutritionGoals } = await server.supabase
+      .from('nutrition_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const { data: healthProfile } = await server.supabase
+      .from('health_profile')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const preferences = prefRow?.preferences || {};
+    const context = buildPersonalizationContext({
+      motivations: preferences?.motivation,
+      preferences,
+      nutritionGoals: nutritionGoals || {},
+      healthProfile: healthProfile || {},
+    });
+
+    return { context };
+  });
+
+  // Get user preferences (JSONB bucket)
   server.get('/preferences', async (request, reply) => {
     const userId = (request.authUser as { id: string }).id;
 
-    const { data: preferences, error } = await server.supabase
+    const { data: row, error } = await server.supabase
       .from('user_preferences')
-      .select('*')
+      .select('preferences')
       .eq('user_id', userId)
       .single();
 
@@ -66,10 +100,10 @@ export async function userRoutes(server: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to fetch preferences' });
     }
 
-    return { preferences: preferences || null };
+    return { preferences: row?.preferences || null };
   });
 
-  // Update user preferences
+  // Update user preferences (wrap body into JSONB 'preferences')
   server.put('/preferences', {
     schema: {
       body: zodToJsonSchema(UpdateUserPreferencesSchema)
@@ -83,7 +117,7 @@ export async function userRoutes(server: FastifyInstance) {
       .from('user_preferences')
       .upsert({
         user_id: userId,
-        ...(preferencesData as Record<string, any>),
+        preferences: preferencesData as Record<string, any>,
         updated_at: new Date().toISOString()
       })
       .select()
