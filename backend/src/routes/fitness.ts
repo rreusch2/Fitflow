@@ -1,5 +1,11 @@
 import { FastifyInstance } from 'fastify';
 
+interface WorkoutSessionStats {
+  duration_minutes?: number | null;
+  muscle_groups?: string[] | null;
+  completed_at: string;
+}
+
 export async function fitnessRoutes(server: FastifyInstance) {
   
   // Log a completed workout session
@@ -88,7 +94,7 @@ export async function fitnessRoutes(server: FastifyInstance) {
       }
 
       // Calculate weekly stats
-      const sessions = recentSessions || [];
+      const sessions = (recentSessions || []) as WorkoutSessionStats[];
       const totalTime = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
       const avgDuration = sessions.length > 0 ? Math.round(totalTime / sessions.length) : 0;
       
@@ -115,7 +121,9 @@ export async function fitnessRoutes(server: FastifyInstance) {
       let currentStreak = 0;
       if (!allSessionsError && allSessions) {
         const sessionDates = new Set(
-          allSessions.map(s => new Date(s.completed_at).toDateString())
+          (allSessions as WorkoutSessionStats[]).map(session =>
+            new Date(session.completed_at).toDateString()
+          )
         );
         
         let checkDate = new Date();
