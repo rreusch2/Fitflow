@@ -94,13 +94,16 @@ export async function fitnessRoutes(server: FastifyInstance) {
       }
 
       // Calculate weekly stats
-      const sessions = (recentSessions || []) as WorkoutSessionStats[];
-      const totalTime = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+      const sessions: WorkoutSessionStats[] = (recentSessions || []) as WorkoutSessionStats[];
+      const totalTime = sessions.reduce(
+        (sum: number, session: WorkoutSessionStats) => sum + (session.duration_minutes || 0),
+        0
+      );
       const avgDuration = sessions.length > 0 ? Math.round(totalTime / sessions.length) : 0;
       
       // Find most common muscle groups
       const muscleGroupCounts: Record<string, number> = {};
-      sessions.forEach(session => {
+      sessions.forEach((session: WorkoutSessionStats) => {
         (session.muscle_groups || []).forEach((group: string) => {
           muscleGroupCounts[group] = (muscleGroupCounts[group] || 0) + 1;
         });
@@ -120,8 +123,9 @@ export async function fitnessRoutes(server: FastifyInstance) {
 
       let currentStreak = 0;
       if (!allSessionsError && allSessions) {
+        const typedSessions = allSessions as WorkoutSessionStats[];
         const sessionDates = new Set(
-          (allSessions as WorkoutSessionStats[]).map(session =>
+          typedSessions.map((session: WorkoutSessionStats) =>
             new Date(session.completed_at).toDateString()
           )
         );
